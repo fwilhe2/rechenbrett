@@ -1,0 +1,71 @@
+{
+  "name": "rechenbrett-spreadsheet",
+  "scopeName": "source.rechenbrett-spreadsheet",
+  "fileTypes": [
+    ".rbt"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "name": "keyword.control.rechenbrett-spreadsheet",
+      "match": "\\b(Hello|person)\\b"
+    },
+    {
+      "name": "string.quoted.double.rechenbrett-spreadsheet",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "include": "#string-character-escape"
+        }
+      ]
+    },
+    {
+      "name": "string.quoted.single.rechenbrett-spreadsheet",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        {
+          "include": "#string-character-escape"
+        }
+      ]
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.rechenbrett-spreadsheet",
+          "begin": "/\\*",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.rechenbrett-spreadsheet"
+            }
+          },
+          "end": "\\*/",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.rechenbrett-spreadsheet"
+            }
+          }
+        },
+        {
+          "begin": "//",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.whitespace.comment.leading.rechenbrett-spreadsheet"
+            }
+          },
+          "end": "(?=$)",
+          "name": "comment.line.rechenbrett-spreadsheet"
+        }
+      ]
+    },
+    "string-character-escape": {
+      "name": "constant.character.escape.rechenbrett-spreadsheet",
+      "match": "\\\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|u\\{[0-9A-Fa-f]+\\}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+    "projectName": "RechenbrettSpreadsheet",
+    "languages": [{
+        "id": "rechenbrett-spreadsheet",
+        "grammar": "src/language-server/rechenbrett-spreadsheet.langium",
+        "fileExtensions": [".rbt"],
+        "textMate": {
+            "out": "syntaxes/rechenbrett-spreadsheet.tmLanguage.json"
+        }
+    }],
+    "out": "src/language-server/generated"
+}
