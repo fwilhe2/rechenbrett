@@ -5,7 +5,14 @@ import (
 	"strings"
 )
 
-func MakeSpreadsheet(cells[][] Cell) Spreadsheet {
+func MakeCell(value, valueType string) Cell {
+	return createCell(CellData{
+		Value:     value,
+		ValueType: valueType,
+	})
+}
+
+func MakeSpreadsheet(cells [][]Cell) Spreadsheet {
 	var rows []Row
 
 	for _, c := range cells {

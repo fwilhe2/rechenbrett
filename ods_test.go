@@ -6,18 +6,19 @@ import (
 )
 
 func TestMakeSpreadsheetWithCommonDataTypes(t *testing.T) {
-	var allCells [][]Cell
-	var firstRowCells []Cell
 
-	firstRowCells = append(firstRowCells, createCell(CellData{Value: "ABBA", ValueType: "string"}))
-	firstRowCells = append(firstRowCells, createCell(CellData{Value: "42.3324", ValueType: "float"}))
-	firstRowCells = append(firstRowCells, createCell(CellData{Value: "2022-02-02", ValueType: "date"}))
-	firstRowCells = append(firstRowCells, createCell(CellData{Value: "19:03:00", ValueType: "time"}))
-	firstRowCells = append(firstRowCells, createCell(CellData{Value: "2.22", ValueType: "currency"}))
-	firstRowCells = append(firstRowCells, createCell(CellData{Value: "0.4223", ValueType: "percentage"}))
+	cells := [][]Cell{
+		{
+			MakeCell("ABBA", "string"),
+			MakeCell("42.3324", "float"),
+			MakeCell("2022-02-02", "date"),
+			MakeCell("19:03:00", "time"),
+			MakeCell("2.22", "currency"),
+			MakeCell("0.4223", "percentage"),
+		},
+	}
 
-	allCells = append(allCells, firstRowCells)
-	spreadsheet := MakeSpreadsheet(allCells)
+	spreadsheet := MakeSpreadsheet(cells)
 
 	actual := MakeFlatOds(spreadsheet)
 
