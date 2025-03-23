@@ -157,14 +157,14 @@ func createNumberStyles() []interface{} {
 			},
 			Map: &Map{Condition: "value()>=0", ApplyStyleName: "___FLOAT_STYLE"},
 		},
-		NumberStyle{
+		DateStyle{
 			Name: "__DATE_STYLE",
-			NumberElements: []NumberElement{
-				{XMLName: xml.Name{Local: "number:year"}, DecimalPlaces: "long"},
-				{XMLName: xml.Name{Local: "number:text"}, DecimalPlaces: "-"},
-				{XMLName: xml.Name{Local: "number:month"}, DecimalPlaces: "long"},
-				{XMLName: xml.Name{Local: "number:text"}, DecimalPlaces: "-"},
-				{XMLName: xml.Name{Local: "number:day"}, DecimalPlaces: "long"},
+			Parts: []interface{}{
+				NumberElementDateYear{XMLName: xml.Name{Local: "number:year"}, Style: "long"},
+				TextElement{Content: "-"},
+				NumberElementDateMonth{XMLName: xml.Name{Local: "number:month"}, Style: "long"},
+				TextElement{Content: "-"},
+				NumberElementDateDay{XMLName: xml.Name{Local: "number:day"}, Style: "long"},
 			},
 		},
 		NumberStyle{
@@ -397,4 +397,25 @@ type CurrencySymbol struct {
 type StyleMap struct {
 	Condition      string `xml:"style:condition,attr"`
 	ApplyStyleName string `xml:"style:apply-style-name,attr"`
+}
+
+type DateStyle struct {
+	XMLName xml.Name      `xml:"number:date-style"`
+	Name    string        `xml:"style:name,attr"`
+	Parts   []interface{} `xml:"number:text"`
+}
+
+type NumberElementDateYear struct {
+	XMLName xml.Name `xml:"number:year"`
+	Style   string   `xml:"number:style,attr"`
+}
+
+type NumberElementDateMonth struct {
+	XMLName xml.Name `xml:"number:month"`
+	Style   string   `xml:"number:style,attr"`
+}
+
+type NumberElementDateDay struct {
+	XMLName xml.Name `xml:"number:day"`
+	Style   string   `xml:"number:style,attr"`
 }
