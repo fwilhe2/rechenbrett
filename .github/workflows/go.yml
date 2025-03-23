@@ -7,6 +7,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+env:
+  LANG: "de_DE.UTF-8"
+
 jobs:
 
   build:
@@ -19,8 +22,16 @@ jobs:
       with:
         go-version: '1.24'
 
+    - name: de_DE.UTF-8
+      run: |
+          sudo locale-gen de_DE.UTF-8
+          sudo update-locale LANG=de_DE.UTF-8
+    - name: date
+      run: |
+          date
+
     - run: |
-        sudo apt-get update && sudo apt-get install -y libreoffice libreoffice-l10n-de
+        sudo apt-get -qq update && sudo apt-get install -yqq libreoffice libreoffice-l10n-de
     - run: libreoffice --headless --version
 
     - name: Build
