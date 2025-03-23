@@ -99,11 +99,11 @@ func timeString(input string) string {
 
 func createCell(cellData CellData) Cell {
 	cell := Cell{
-		Text:      cellData.Value,
 		ValueType: cellData.ValueType,
 	}
 	switch cellData.ValueType {
 	case "string":
+		cell.Text = cellData.Value
 		cell.CalcExtType = "string"
 	case "float":
 		cell.CalcExtType = "float"
@@ -237,7 +237,7 @@ func createStyles() []Style {
 
 type Cell struct {
 	XMLName     xml.Name `xml:"table:table-cell"`
-	Text        string   `xml:"text:p"`
+	Text        string   `xml:"text:p,omitempty"`
 	ValueType   string   `xml:"office:value-type,attr,omitempty"`
 	CalcExtType string   `xml:"calcext:value-type,attr,omitempty"`
 	Value       string   `xml:"office:value,attr,omitempty"`
