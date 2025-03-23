@@ -85,3 +85,32 @@ func TestCommonDataTypes(t *testing.T) {
 		t.Fail()
 	}
 }
+
+
+func TestFoo(t *testing.T) {
+	inputCells := [][]Cell{
+		{
+			MakeCell("ABBA", "string"),
+			MakeCell("42.3324", "float"),
+			MakeCell("2022-02-02", "date"),
+			MakeCell("19:03:00", "time"),
+			MakeCell("2.22", "currency"),
+			MakeCell("-2.22", "currency"),
+			MakeCell("0.4223", "percentage"),
+		},
+	}
+
+	spreadsheet := MakeSpreadsheet(inputCells)
+
+
+	buff := MakeOds(spreadsheet)
+
+	archive, err := os.Create("output/test.ods")
+	if err != nil {
+		panic(err)
+	}
+
+	archive.Write(buff.Bytes())
+
+	archive.Close()
+}
