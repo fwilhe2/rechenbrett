@@ -16,6 +16,7 @@ func TestMakeSpreadsheetWithCommonDataTypes(t *testing.T) {
 			MakeCell("2022-02-02", "date"),
 			MakeCell("19:03:00", "time"),
 			MakeCell("2.22", "currency"),
+			MakeCell("-2.22", "currency"),
 			MakeCell("0.4223", "percentage"),
 		},
 	}

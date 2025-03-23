@@ -130,9 +130,9 @@ func createCell(cellData CellData) Cell {
 	return cell
 }
 
-func createNumberStyles() []NumberStyle {
-	return []NumberStyle{
-		{
+func createNumberStyles() []interface{} {
+	return []interface{}{
+		NumberStyle{
 			Name:     "___FLOAT_STYLE",
 			Volatile: "true",
 			NumberElements: []NumberElement{
@@ -144,7 +144,7 @@ func createNumberStyles() []NumberStyle {
 				},
 			},
 		},
-		{
+		NumberStyle{
 			Name:           "__FLOAT_STYLE",
 			TextProperties: &TextProperties{Color: "#ff0000"},
 			NumberElements: []NumberElement{
@@ -157,7 +157,7 @@ func createNumberStyles() []NumberStyle {
 			},
 			Map: &Map{Condition: "value()>=0", ApplyStyleName: "___FLOAT_STYLE"},
 		},
-		{
+		NumberStyle{
 			Name: "__DATE_STYLE",
 			NumberElements: []NumberElement{
 				{XMLName: xml.Name{Local: "number:year"}, DecimalPlaces: "long"},
@@ -167,7 +167,7 @@ func createNumberStyles() []NumberStyle {
 				{XMLName: xml.Name{Local: "number:day"}, DecimalPlaces: "long"},
 			},
 		},
-		{
+		NumberStyle{
 			Name: "__TIME_STYLE",
 			NumberElements: []NumberElement{
 				{XMLName: xml.Name{Local: "number:hours"}, DecimalPlaces: "long"},
@@ -177,41 +177,25 @@ func createNumberStyles() []NumberStyle {
 				{XMLName: xml.Name{Local: "number:seconds"}, DecimalPlaces: "long"},
 			},
 		},
-		{
-			Name:     "___EUR_STYLE",
+		CurrencyStyle{
+			Name:     "__EUR_STYLE",
 			Volatile: "true",
 			Language: "en",
 			Country:  "DE",
-			NumberElements: []NumberElement{
-				{
-					DecimalPlaces:    "2",
-					MinDecimalPlaces: "2",
-					MinIntegerDigits: "1",
-					Grouping:         "true",
-				},
-				{XMLName: xml.Name{Local: "number:text"}},
-				{XMLName: xml.Name{Local: "number:currency-symbol"}, DecimalPlaces: "€", Language: "de", Country: "DE"},
+			Number: NumberFormat{
+				DecimalPlaces:    2,
+				MinDecimalPlaces: 2,
+				MinIntegerDigits: 1,
+				Grouping:         true,
+			},
+			Texts: []TextElement{{}},
+			CurrencySymbol: CurrencySymbol{
+				Language: "de",
+				Country:  "DE",
+				Symbol:   "€",
 			},
 		},
-		{
-			Name:           "__EUR_STYLE",
-			Language:       "en",
-			Country:        "DE",
-			TextProperties: &TextProperties{Color: "#ff0000"},
-			NumberElements: []NumberElement{
-				{XMLName: xml.Name{Local: "number:text"}, DecimalPlaces: "-"},
-				{
-					DecimalPlaces:    "2",
-					MinDecimalPlaces: "2",
-					MinIntegerDigits: "1",
-					Grouping:         "true",
-				},
-				{XMLName: xml.Name{Local: "number:text"}},
-				{XMLName: xml.Name{Local: "number:currency-symbol"}, DecimalPlaces: "€", Language: "de", Country: "DE"},
-			},
-			Map: &Map{Condition: "value()>=0", ApplyStyleName: "___EUR_STYLE"},
-		},
-		{
+		NumberStyle{
 			Name: "__PERCENTAGE_STYLE",
 			NumberElements: []NumberElement{
 				{
@@ -302,9 +286,14 @@ type FlatOds struct {
 	Body              Body            `xml:"office:body"`
 }
 
+type Styles struct {
+	XMLName xml.Name      `xml:"styles"`
+	Items   []interface{} `xml:",any"`
+}
+
 type AutomaticStyles struct {
 	XMLName      xml.Name      `xml:"office:automatic-styles"`
-	NumberStyles []NumberStyle `xml:"number:number-style"`
+	NumberStyles []interface{} `xml:"number:number-style"`
 	Styles       []Style       `xml:"style:style"`
 }
 
@@ -373,4 +362,39 @@ type FileEntry struct {
 	FullPath  string `xml:"manifest:full-path,attr"`
 	Version   string `xml:"manifest:version,attr,omitempty"`
 	MediaType string `xml:"manifest:media-type,attr"`
+}
+
+type CurrencyStyle struct {
+	XMLName        xml.Name        `xml:"number:currency-style"`
+	Name           string          `xml:"style:name,attr"`
+	Volatile       string          `xml:"style:volatile,attr,omitempty"`
+	Language       string          `xml:"number:language,attr"`
+	Country        string          `xml:"number:country,attr"`
+	Number         NumberFormat    `xml:"number:number"`
+	Texts          []TextElement   `xml:"number:text"`
+	CurrencySymbol CurrencySymbol  `xml:"number:currency-symbol"`
+	TextProperties *TextProperties `xml:"style:text-properties,omitempty"`
+	StyleMap       *StyleMap       `xml:"style:map,omitempty"`
+}
+
+type NumberFormat struct {
+	DecimalPlaces    int  `xml:"number:decimal-places,attr"`
+	MinDecimalPlaces int  `xml:"number:min-decimal-places,attr"`
+	MinIntegerDigits int  `xml:"number:min-integer-digits,attr"`
+	Grouping         bool `xml:"number:grouping,attr"`
+}
+
+type TextElement struct {
+	Content string `xml:",chardata"`
+}
+
+type CurrencySymbol struct {
+	Language string `xml:"number:language,attr"`
+	Country  string `xml:"number:country,attr"`
+	Symbol   string `xml:",chardata"`
+}
+
+type StyleMap struct {
+	Condition      string `xml:"style:condition,attr"`
+	ApplyStyleName string `xml:"style:apply-style-name,attr"`
 }
