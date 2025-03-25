@@ -1,7 +1,10 @@
 package ods
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/xml"
+	"log"
 	"strings"
 )
 
@@ -54,6 +57,116 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 
 	out, _ := xml.MarshalIndent(fods, " ", "  ")
 	return xmlByteArrayToStringWithHeader(out)
+}
+
+func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
+	manifest := Manifest{
+		Version: "1.3",
+		XMLNS:   "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
+		Entries: []FileEntry{
+			{
+				FullPath:  "/",
+				Version:   "1.3",
+				MediaType: "application/vnd.oasis.opendocument.spreadsheet",
+			},
+			{
+				FullPath:  "manifest.rdf",
+				MediaType: "application/rdf+xml",
+			},
+			{
+				FullPath:  "meta.xml",
+				MediaType: "text/xml",
+			},
+			{
+				FullPath:  "styles.xml",
+				MediaType: "text/xml",
+			},
+			{
+				FullPath:  "content.xml",
+				MediaType: "text/xml",
+			},
+		},
+	}
+
+	contentXml := OfficeDocumentContent{
+		XMLNSOffice:    "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
+		XMLNSTable:     "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
+		XMLNSText:      "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
+		XMLNSStyle:     "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
+		XMLNSFo:        "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
+		XMLNSNumber:    "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
+		XMLNSCalcext:   "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0",
+		OfficeVersion:  "1.3",
+		OfficeMimetype: "application/vnd.oasis.opendocument.spreadsheet",
+		AutomaticStyles: AutomaticStyles{
+			NumberStyles: createNumberStyles(),
+			Styles:       createStyles(),
+		},
+		Body: Body{
+			Spreadsheet: spreadsheet,
+		},
+	}
+
+	stylesXml := OfficeDocumentStyles{
+		XMLNSOffice:   "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
+		XMLNSTable:    "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
+		XMLNSText:     "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
+		XMLNSStyle:    "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
+		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
+		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
+		XMLNSSvg:      "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
+		XMLNSCalcext:  "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0",
+		OfficeVersion: "1.3",
+		AutomaticStyles: AutomaticStyles{
+			NumberStyles: createNumberStyles(),
+			Styles:       createStyles(),
+		},
+	}
+
+	manifestStr, err := xml.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	contentStr, err := xml.MarshalIndent(contentXml, "", "  ")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	stylesStr, err := xml.MarshalIndent(stylesXml, "", "  ")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	byesBuffer := new(bytes.Buffer)
+	w := zip.NewWriter(byesBuffer)
+
+	var files = []struct {
+		Name, Body string
+	}{
+		{"mimetype", "application/vnd.oasis.opendocument.spreadsheet"},
+		{"META-INF/manifest.xml", xmlByteArrayToStringWithHeader(manifestStr)},
+		{"content.xml", xmlByteArrayToStringWithHeader(contentStr)},
+		{"styles.xml", xmlByteArrayToStringWithHeader(stylesStr)},
+	}
+	for _, file := range files {
+		f, err := w.Create(file.Name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = f.Write([]byte(file.Body))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Make sure to check the error on Close.
+	err = w.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return byesBuffer
 }
 
 func xmlByteArrayToStringWithHeader(input []byte) string {
@@ -228,6 +341,35 @@ type FlatOds struct {
 	Body            Body            `xml:"office:body"`
 }
 
+type OfficeDocumentContent struct {
+	XMLName         xml.Name        `xml:"office:document"`
+	XMLNSOffice     string          `xml:"xmlns:office,attr"`
+	XMLNSTable      string          `xml:"xmlns:table,attr"`
+	XMLNSText       string          `xml:"xmlns:text,attr"`
+	XMLNSStyle      string          `xml:"xmlns:style,attr"`
+	XMLNSFo         string          `xml:"xmlns:fo,attr"`
+	XMLNSNumber     string          `xml:"xmlns:number,attr"`
+	XMLNSCalcext    string          `xml:"xmlns:calcext,attr"`
+	OfficeVersion   string          `xml:"office:version,attr"`
+	OfficeMimetype  string          `xml:"office:mimetype,attr"`
+	AutomaticStyles AutomaticStyles `xml:"office:automatic-styles"`
+	Body            Body            `xml:"office:body"`
+}
+
+type OfficeDocumentStyles struct {
+	XMLName         xml.Name        `xml:"office:document-styles"`
+	XMLNSOffice     string          `xml:"xmlns:office,attr"`
+	XMLNSTable      string          `xml:"xmlns:table,attr"`
+	XMLNSText       string          `xml:"xmlns:text,attr"`
+	XMLNSStyle      string          `xml:"xmlns:style,attr"`
+	XMLNSFo         string          `xml:"xmlns:fo,attr"`
+	XMLNSNumber     string          `xml:"xmlns:number,attr"`
+	XMLNSSvg        string          `xml:"xmlns:svg,attr"`
+	XMLNSCalcext    string          `xml:"xmlns:calcext,attr"`
+	OfficeVersion   string          `xml:"office:version,attr"`
+	AutomaticStyles AutomaticStyles `xml:"office:automatic-styles"`
+}
+
 type Styles struct {
 	XMLName xml.Name      `xml:"styles"`
 	Items   []interface{} `xml:",any"`
@@ -297,6 +439,7 @@ type CellData struct {
 type Manifest struct {
 	XMLName xml.Name    `xml:"manifest:manifest"`
 	Version string      `xml:"manifest:version,attr"`
+	XMLNS   string      `xml:"xmlns:manifest,attr"`
 	Entries []FileEntry `xml:"manifest:file-entry"`
 }
 
