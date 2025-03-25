@@ -62,6 +62,7 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	manifest := Manifest{
 		Version: "1.3",
+		XMLNS:   "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
 		Entries: []FileEntry{
 			{
 				FullPath:  "/",
@@ -97,6 +98,10 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 		XMLNSCalcext:   "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0",
 		OfficeVersion:  "1.3",
 		OfficeMimetype: "application/vnd.oasis.opendocument.spreadsheet",
+		AutomaticStyles: AutomaticStyles{
+			NumberStyles: createNumberStyles(),
+			Styles:       createStyles(),
+		},
 		Body: Body{
 			Spreadsheet: spreadsheet,
 		},
@@ -337,21 +342,22 @@ type FlatOds struct {
 }
 
 type OfficeDocumentContent struct {
-	XMLName        xml.Name `xml:"office:document"`
-	XMLNSOffice    string   `xml:"xmlns:office,attr"`
-	XMLNSTable     string   `xml:"xmlns:table,attr"`
-	XMLNSText      string   `xml:"xmlns:text,attr"`
-	XMLNSStyle     string   `xml:"xmlns:style,attr"`
-	XMLNSFo        string   `xml:"xmlns:fo,attr"`
-	XMLNSNumber    string   `xml:"xmlns:number,attr"`
-	XMLNSCalcext   string   `xml:"xmlns:calcext,attr"`
-	OfficeVersion  string   `xml:"office:version,attr"`
-	OfficeMimetype string   `xml:"office:mimetype,attr"`
-	Body           Body     `xml:"office:body"`
+	XMLName         xml.Name        `xml:"office:document"`
+	XMLNSOffice     string          `xml:"xmlns:office,attr"`
+	XMLNSTable      string          `xml:"xmlns:table,attr"`
+	XMLNSText       string          `xml:"xmlns:text,attr"`
+	XMLNSStyle      string          `xml:"xmlns:style,attr"`
+	XMLNSFo         string          `xml:"xmlns:fo,attr"`
+	XMLNSNumber     string          `xml:"xmlns:number,attr"`
+	XMLNSCalcext    string          `xml:"xmlns:calcext,attr"`
+	OfficeVersion   string          `xml:"office:version,attr"`
+	OfficeMimetype  string          `xml:"office:mimetype,attr"`
+	AutomaticStyles AutomaticStyles `xml:"office:automatic-styles"`
+	Body            Body            `xml:"office:body"`
 }
 
 type OfficeDocumentStyles struct {
-	XMLName         xml.Name        `xml:"office:document"`
+	XMLName         xml.Name        `xml:"office:document-styles"`
 	XMLNSOffice     string          `xml:"xmlns:office,attr"`
 	XMLNSTable      string          `xml:"xmlns:table,attr"`
 	XMLNSText       string          `xml:"xmlns:text,attr"`
@@ -433,6 +439,7 @@ type CellData struct {
 type Manifest struct {
 	XMLName xml.Name    `xml:"manifest:manifest"`
 	Version string      `xml:"manifest:version,attr"`
+	XMLNS   string      `xml:"xmlns:manifest,attr"`
 	Entries []FileEntry `xml:"manifest:file-entry"`
 }
 
