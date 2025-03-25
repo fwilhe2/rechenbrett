@@ -11,15 +11,28 @@ import (
 	"testing"
 )
 
-func integrationTest(testName string, inputCells [][]Cell, expectedCsv [][]string) error {
+func integrationTest(testName string, format string, inputCells [][]Cell, expectedCsv [][]string) error {
 	spreadsheet := MakeSpreadsheet(inputCells)
 
 	actual := MakeFlatOds(spreadsheet)
 	os.Mkdir("output", 0777)
 
-	os.WriteFile(fmt.Sprintf("output/%s.fods", testName), []byte(actual), 0644)
+	if format == "ods" {
+		buff := MakeOds(spreadsheet)
 
-	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" output/%s.fods --outdir output", testName)
+		archive, err := os.Create(fmt.Sprintf("output/%s.%s", testName, format))
+		if err != nil {
+			panic(err)
+		}
+
+		archive.Write(buff.Bytes())
+
+		archive.Close()
+	} else {
+		os.WriteFile(fmt.Sprintf("output/%s.%s", testName, format), []byte(actual), 0644)
+	}
+
+	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" output/%s.%s --outdir output", testName, format)
 	loCmd := exec.Command("bash", "-c", cmd)
 	_, err := loCmd.Output()
 	if err != nil {
@@ -78,39 +91,17 @@ func TestCommonDataTypes(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("common-data-types", givenThoseCells, expectedThisCsv)
+	err := integrationTest("common-data-types", "ods", givenThoseCells, expectedThisCsv)
 
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		t.Fail()
 	}
-}
 
+	err = integrationTest("common-data-types", "fods", givenThoseCells, expectedThisCsv)
 
-func TestFoo(t *testing.T) {
-	inputCells := [][]Cell{
-		{
-			MakeCell("ABBA", "string"),
-			MakeCell("42.3324", "float"),
-			MakeCell("2022-02-02", "date"),
-			MakeCell("19:03:00", "time"),
-			MakeCell("2.22", "currency"),
-			MakeCell("-2.22", "currency"),
-			MakeCell("0.4223", "percentage"),
-		},
-	}
-
-	spreadsheet := MakeSpreadsheet(inputCells)
-
-
-	buff := MakeOds(spreadsheet)
-
-	archive, err := os.Create("output/test.ods")
 	if err != nil {
-		panic(err)
+		fmt.Printf("err: %v\n", err)
+		t.Fail()
 	}
-
-	archive.Write(buff.Bytes())
-
-	archive.Close()
 }
