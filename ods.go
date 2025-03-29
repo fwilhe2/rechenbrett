@@ -210,6 +210,9 @@ func createCell(cellData CellData) Cell {
 		cell.CalcExtType = "percentage"
 		cell.StyleName = "PERCENTAGE_STYLE"
 		cell.Value = cellData.Value
+	case "formula":
+		cell.Formula = cellData.Value
+		cell.ValueType = ""
 	}
 	return cell
 }
@@ -313,6 +316,7 @@ type Cell struct {
 	TimeValue   string   `xml:"office:time-value,attr,omitempty"`
 	Currency    string   `xml:"office:currency,attr,omitempty"`
 	StyleName   string   `xml:"table:style-name,attr,omitempty"`
+	Formula     string   `xml:"table:formula,attr,omitempty"`
 }
 
 type Row struct {
