@@ -1,1 +1,3 @@
-# go-spreadsheetlib
+# rechenbrett
+
+A go library for building spreadsheets.
