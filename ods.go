@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"log"
 	"strings"
 )
@@ -15,11 +16,34 @@ func MakeCell(value, valueType string) Cell {
 	})
 }
 
+func MakeRangeCell(value, valueType, rangeName string) Cell {
+	return createCell(CellData{
+		Value:     value,
+		ValueType: valueType,
+		Range:     rangeName,
+	})
+}
+
 func MakeSpreadsheet(cells [][]Cell) Spreadsheet {
 	var rows []Row
 
+	rangesData := map[string][][2]int{}
+	ranges := []string{}
+
+	r1 := 1
+	c1 := 1
 	for _, c := range cells {
 		rows = append(rows, Row{Cells: c})
+		for _, cc := range c {
+			fmt.Println(cc.Text)
+			if len(cc.Range) > 0 {
+				rangesData[cc.Range] = append(rangesData[cc.Range], [2]int{r1, c1})
+				ranges = append(ranges, cc.Range)
+			}
+			c1++
+		}
+		r1++
+		c1 = 1
 	}
 
 	tables := []Table{
@@ -29,13 +53,42 @@ func MakeSpreadsheet(cells [][]Cell) Spreadsheet {
 		},
 	}
 
+	namedRanges := []NamedRange{}
+	for rangeIdx := range ranges {
+		namedRanges = append(namedRanges, NamedRange{
+			Name:             ranges[rangeIdx],
+			BaseCellAddress:  fmt.Sprintf("$Sheet1.%s", toA1(rangesData[ranges[rangeIdx]][0][0], rangesData[ranges[rangeIdx]][0][1])),
+			CellRangeAddress: fmt.Sprintf("$Sheet1.%s", toA1(rangesData[ranges[rangeIdx]][0][0], rangesData[ranges[rangeIdx]][0][1])),
+		})
+	}
+
 	return Spreadsheet{
-		Tables: tables,
+		Tables:           tables,
+		NamedExpressions: NamedExpressions{NamedRanges: namedRanges},
 	}
 }
 
-func MakeFlatOds(spreadsheet Spreadsheet) string {
+// Converts a column number to its Excel-style letter representation
+func columnToLetters(col int) string {
+	letters := ""
+	for col > 0 {
+		col-- // adjust for 1-based indexing
+		letter := 'A' + (col % 26)
+		letters = string(rune(letter)) + letters
+		col /= 26
+	}
+	return letters
+}
 
+// Converts row and column indices to Excel A1 format
+func toA1(row, col int) string {
+	if row < 1 || col < 1 {
+		return ""
+	}
+	return fmt.Sprintf("$%s$%d", columnToLetters(col), row)
+}
+
+func MakeFlatOds(spreadsheet Spreadsheet) string {
 	fods := FlatOds{
 		XMLNSOffice:    "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
 		XMLNSTable:     "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
@@ -141,7 +194,7 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	byesBuffer := new(bytes.Buffer)
 	w := zip.NewWriter(byesBuffer)
 
-	var files = []struct {
+	files := []struct {
 		Name, Body string
 	}{
 		{"mimetype", "application/vnd.oasis.opendocument.spreadsheet"},
@@ -184,6 +237,7 @@ func timeString(input string) string {
 func createCell(cellData CellData) Cell {
 	cell := Cell{
 		ValueType: cellData.ValueType,
+		Range:     cellData.Range,
 	}
 	switch cellData.ValueType {
 	case "string":
@@ -317,6 +371,7 @@ type Cell struct {
 	Currency    string   `xml:"office:currency,attr,omitempty"`
 	StyleName   string   `xml:"table:style-name,attr,omitempty"`
 	Formula     string   `xml:"table:formula,attr,omitempty"`
+	Range       string   `xml:"-"`
 }
 
 type Row struct {
@@ -431,13 +486,15 @@ type Body struct {
 }
 
 type Spreadsheet struct {
-	XMLName xml.Name `xml:"office:spreadsheet"`
-	Tables  []Table  `xml:"table:table"`
+	XMLName          xml.Name         `xml:"office:spreadsheet"`
+	Tables           []Table          `xml:"table:table"`
+	NamedExpressions NamedExpressions `xml:"table:named-expressions"`
 }
 
 type CellData struct {
 	Value     string `json:"value"`
 	ValueType string `json:"valueType"`
+	Range     string `json:"range,omitempty"`
 }
 
 type Manifest struct {
@@ -507,4 +564,14 @@ type NumberElementDateMonth struct {
 type NumberElementDateDay struct {
 	XMLName xml.Name `xml:"number:day"`
 	Style   string   `xml:"number:style,attr"`
+}
+
+type NamedExpressions struct {
+	NamedRanges []NamedRange `xml:"table:named-range"`
+}
+
+type NamedRange struct {
+	Name             string `xml:"table:name,attr"`
+	BaseCellAddress  string `xml:"table:base-cell-address,attr"`
+	CellRangeAddress string `xml:"table:cell-range-address,attr"`
 }

@@ -15,7 +15,7 @@ func integrationTest(testName string, format string, inputCells [][]Cell, expect
 	spreadsheet := MakeSpreadsheet(inputCells)
 
 	actual := MakeFlatOds(spreadsheet)
-	os.Mkdir("output", 0777)
+	os.Mkdir("output", 0o777)
 
 	if format == "ods" {
 		buff := MakeOds(spreadsheet)
@@ -29,7 +29,7 @@ func integrationTest(testName string, format string, inputCells [][]Cell, expect
 
 		archive.Close()
 	} else {
-		os.WriteFile(fmt.Sprintf("output/%s.%s", testName, format), []byte(actual), 0644)
+		os.WriteFile(fmt.Sprintf("output/%s.%s", testName, format), []byte(actual), 0o644)
 	}
 
 	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" output/%s.%s --outdir output", testName, format)
@@ -92,14 +92,12 @@ func TestCommonDataTypes(t *testing.T) {
 	}
 
 	err := integrationTest("common-data-types", "ods", givenThoseCells, expectedThisCsv)
-
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		t.Fail()
 	}
 
 	err = integrationTest("common-data-types", "fods", givenThoseCells, expectedThisCsv)
-
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		t.Fail()
@@ -130,14 +128,48 @@ func TestFormula(t *testing.T) {
 	}
 
 	err := integrationTest("formula", "ods", givenThoseCells, expectedThisCsv)
-
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		t.Fail()
 	}
 
 	err = integrationTest("formula", "fods", givenThoseCells, expectedThisCsv)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		t.Fail()
+	}
+}
 
+func TestRanges(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeRangeCell("42.3324", "float", "InputA"),
+			MakeRangeCell("23", "float", "InputB"),
+			MakeCell("InputA+InputB", "formula"),
+			MakeCell("SUM(InputA:InputB)", "formula"),
+			MakeCell("(InputA+InputB)/2", "formula"),
+			MakeCell("AVERAGE(InputA:InputB)", "formula"),
+		},
+	}
+
+	expectedThisCsv := [][]string{
+		{
+			"42,33",
+			"23,00",
+			"65,3324",
+			"65,3324",
+			"32,6662",
+			"32,6662",
+		},
+	}
+
+	err := integrationTest("ranges", "ods", givenThoseCells, expectedThisCsv)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		t.Fail()
+	}
+
+	err = integrationTest("ranges", "fods", givenThoseCells, expectedThisCsv)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		t.Fail()
