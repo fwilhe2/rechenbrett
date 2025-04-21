@@ -175,3 +175,34 @@ func TestRanges(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestUnitRanges(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeRangeCell("42.3324", "float", "InputA"),
+			MakeRangeCell("23", "float", "InputB"),
+		},
+		{},
+		{
+			MakeRangeCell("42.3324", "float", "InputC"),
+			MakeRangeCell("23", "float", "InputD"),
+		},
+		{},
+		{
+			MakeRangeCell("42.3324", "float", "InputE"),
+			MakeRangeCell("23", "float", "InputF"),
+		},
+	}
+
+	spreadsheet := MakeSpreadsheet(givenThoseCells)
+
+	actual := MakeFlatOds(spreadsheet)
+
+	if !strings.Contains(actual, "<table:named-range table:name=\"InputA\" table:base-cell-address=\"$Sheet1.$A$1\" table:cell-range-address=\"$Sheet1.$A$1\"></table:named-range>") {
+		t.Fail()
+	}
+
+	if !strings.Contains(actual, "<table:named-range table:name=\"InputF\" table:base-cell-address=\"$Sheet1.$B$5\" table:cell-range-address=\"$Sheet1.$B$5\"></table:named-range>") {
+		t.Fail()
+	}
+}
