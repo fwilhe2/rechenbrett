@@ -35,7 +35,6 @@ func MakeSpreadsheet(cells [][]Cell) Spreadsheet {
 	for _, c := range cells {
 		rows = append(rows, Row{Cells: c})
 		for _, cc := range c {
-			fmt.Println(cc.Text)
 			if len(cc.Range) > 0 {
 				rangesData[cc.Range] = append(rangesData[cc.Range], [2]int{r1, c1})
 				ranges = append(ranges, cc.Range)
