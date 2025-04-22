@@ -113,21 +113,12 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 
 func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	manifest := Manifest{
-		Version: "1.3",
-		XMLNS:   "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
+		XMLNS: "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
 		Entries: []FileEntry{
 			{
 				FullPath:  "/",
 				Version:   "1.3",
 				MediaType: "application/vnd.oasis.opendocument.spreadsheet",
-			},
-			{
-				FullPath:  "manifest.rdf",
-				MediaType: "application/rdf+xml",
-			},
-			{
-				FullPath:  "meta.xml",
-				MediaType: "text/xml",
 			},
 			{
 				FullPath:  "styles.xml",
@@ -141,15 +132,14 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	}
 
 	contentXml := OfficeDocumentContent{
-		XMLNSOffice:    "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
-		XMLNSTable:     "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
-		XMLNSText:      "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
-		XMLNSStyle:     "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
-		XMLNSFo:        "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
-		XMLNSNumber:    "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
-		XMLNSCalcext:   "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0",
-		OfficeVersion:  "1.3",
-		OfficeMimetype: "application/vnd.oasis.opendocument.spreadsheet",
+		XMLNSOffice:   "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
+		XMLNSTable:    "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
+		XMLNSText:     "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
+		XMLNSStyle:    "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
+		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
+		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
+		XMLNSCalcext:  "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0",
+		OfficeVersion: "1.3",
 		AutomaticStyles: AutomaticStyles{
 			NumberStyles: createNumberStyles(),
 			Styles:       createStyles(),
@@ -290,7 +280,6 @@ func createNumberStyles() []interface{} {
 			NumberElements: []NumberElement{
 				{
 					DecimalPlaces:    "2",
-					MinDecimalPlaces: "2",
 					MinIntegerDigits: "1",
 					Grouping:         "true",
 				},
@@ -324,7 +313,6 @@ func createNumberStyles() []interface{} {
 			Country:  "DE",
 			Number: NumberFormat{
 				DecimalPlaces:    2,
-				MinDecimalPlaces: 2,
 				MinIntegerDigits: 1,
 				Grouping:         true,
 			},
@@ -340,7 +328,6 @@ func createNumberStyles() []interface{} {
 			NumberElements: []NumberElement{
 				{
 					DecimalPlaces:    "2",
-					MinDecimalPlaces: "2",
 					MinIntegerDigits: "1",
 				},
 				{XMLName: xml.Name{Local: "number:text"}, DecimalPlaces: "%"},
@@ -400,7 +387,7 @@ type FlatOds struct {
 }
 
 type OfficeDocumentContent struct {
-	XMLName         xml.Name        `xml:"office:document"`
+	XMLName         xml.Name        `xml:"office:document-content"`
 	XMLNSOffice     string          `xml:"xmlns:office,attr"`
 	XMLNSTable      string          `xml:"xmlns:table,attr"`
 	XMLNSText       string          `xml:"xmlns:text,attr"`
@@ -409,7 +396,6 @@ type OfficeDocumentContent struct {
 	XMLNSNumber     string          `xml:"xmlns:number,attr"`
 	XMLNSCalcext    string          `xml:"xmlns:calcext,attr"`
 	OfficeVersion   string          `xml:"office:version,attr"`
-	OfficeMimetype  string          `xml:"office:mimetype,attr"`
 	AutomaticStyles AutomaticStyles `xml:"office:automatic-styles"`
 	Body            Body            `xml:"office:body"`
 }
@@ -461,8 +447,8 @@ type NumberElement struct {
 	MinDecimalPlaces string   `xml:"number:min-decimal-places,attr"`
 	MinIntegerDigits string   `xml:"number:min-integer-digits,attr"`
 	Grouping         string   `xml:"number:grouping,attr"`
-	Language         string
-	Country          string
+	Language         string   `xml:"-"`
+	Country          string   `xml:"-"`
 }
 
 type Map struct {
