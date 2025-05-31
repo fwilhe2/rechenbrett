@@ -11,13 +11,20 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-env:
-  LANG: "de_DE.UTF-8"
 
 jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        LANG:
+          - locale: de_DE.UTF-8
+          - locale: en_US.UTF-8
+    env:
+      LANG: ${{ matrix.LANG.locale }}
+
     steps:
     - uses: actions/checkout@v4
 
@@ -26,10 +33,10 @@ jobs:
       with:
         go-version: '1.24'
 
-    - name: de_DE.UTF-8
+    - name: Set locale
       run: |
-          sudo locale-gen de_DE.UTF-8
-          sudo update-locale LANG=de_DE.UTF-8
+          sudo locale-gen ${{ matrix.LANG.locale }}
+          sudo update-locale LANG=${{ matrix.LANG.locale }}
     - name: date
       run: |
           date

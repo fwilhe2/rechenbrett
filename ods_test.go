@@ -16,6 +16,8 @@ import (
 )
 
 func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv [][]string) error {
+	fmt.Println(os.Getenv("LANG"))
+	fmt.Println(os.Getenv("LC_ALL"))
 	spreadsheet := MakeSpreadsheet(inputCells)
 
 	actual := MakeFlatOds(spreadsheet)
