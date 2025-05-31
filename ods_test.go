@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func integrationTest(testName string, format string, inputCells [][]Cell, expectedCsv [][]string) error {
+func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv [][]string) error {
 	spreadsheet := MakeSpreadsheet(inputCells)
 
 	actual := MakeFlatOds(spreadsheet)
