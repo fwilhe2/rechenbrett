@@ -41,7 +41,7 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv m
 		os.WriteFile(fmt.Sprintf("%s/%s-%s.%s", tempDir, testName, lang, format), []byte(actual), 0o644)
 	}
 
-	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" %s/%s-%s.%s -env:LANG=%s --outdir %s", tempDir, testName, lang, format, lang, tempDir)
+	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" %s/%s-%s.%s --outdir %s", tempDir, testName, lang, format, tempDir)
 	loCmd := exec.Command("bash", "-c", cmd)
 	_, err = loCmd.Output()
 	if err != nil {
