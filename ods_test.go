@@ -99,7 +99,7 @@ func TestCommonDataTypes(t *testing.T) {
 			"07:03:00 PM",
 			"2.22€",
 			"-2.22€",
-			"42.23 %",
+			"42.23%",
 		},
 	}
 	expectedThisCsv["de_DE.UTF-8"] = [][]string{
