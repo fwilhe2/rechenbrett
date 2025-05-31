@@ -15,12 +15,13 @@ import (
 	"testing"
 )
 
-func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv [][]string) error {
+func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv map[string][][]string) error {
+	lang := os.Getenv("LANG")
 	spreadsheet := MakeSpreadsheet(inputCells)
 
 	actual := MakeFlatOds(spreadsheet)
 
-	tempDir, err := os.MkdirTemp(".", fmt.Sprintf("integration-test-%s-", testName))
+	tempDir, err := os.MkdirTemp(".", fmt.Sprintf("integration-test-%s-%s-", testName, lang))
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +29,7 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv [
 	if format == "ods" {
 		buff := MakeOds(spreadsheet)
 
-		archive, err := os.Create(fmt.Sprintf("%s/%s.%s", tempDir, testName, format))
+		archive, err := os.Create(fmt.Sprintf("%s/%s-%s.%s", tempDir, testName, lang, format))
 		if err != nil {
 			panic(err)
 		}
@@ -37,17 +38,17 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv [
 
 		archive.Close()
 	} else {
-		os.WriteFile(fmt.Sprintf("%s/%s.%s", tempDir, testName, format), []byte(actual), 0o644)
+		os.WriteFile(fmt.Sprintf("%s/%s-%s.%s", tempDir, testName, lang, format), []byte(actual), 0o644)
 	}
 
-	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" %s/%s.%s --outdir %s", tempDir, testName, format, tempDir)
+	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" %s/%s-%s.%s --outdir %s", tempDir, testName, lang, format, tempDir)
 	loCmd := exec.Command("bash", "-c", cmd)
 	_, err = loCmd.Output()
 	if err != nil {
 		panic(err)
 	}
 
-	actualCsvBytes, _ := os.ReadFile(fmt.Sprintf("%s/%s.csv", tempDir, testName))
+	actualCsvBytes, _ := os.ReadFile(fmt.Sprintf("%s/%s-%s.csv", tempDir, testName, lang))
 
 	actualCsv := string(actualCsvBytes)
 
@@ -64,10 +65,11 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv [
 		}
 
 		fmt.Println(record)
+		fmt.Println(expectedCsv)
 
 		for i, v := range record {
-			if v != expectedCsv[line][i] {
-				return fmt.Errorf("[%s] Failed test, value is: '%s', expected: '%s'", testName, v, expectedCsv[line][i])
+			if v != expectedCsv[lang][line][i] {
+				return fmt.Errorf("[%s %s] Failed test, value is: '%s', expected: '%s'", testName, lang, v, expectedCsv[lang][line][i])
 			}
 		}
 	}
@@ -87,7 +89,19 @@ func TestCommonDataTypes(t *testing.T) {
 		},
 	}
 
-	expectedThisCsv := [][]string{
+	expectedThisCsv := make(map[string][][]string)
+	expectedThisCsv["en_US.UTF-8"] = [][]string{
+		{
+			"ABBA",
+			"42.33",
+			"2022-02-02",
+			"07:03:00 PM",
+			"2.22€",
+			"-2.22€",
+			"42.23%",
+		},
+	}
+	expectedThisCsv["de_DE.UTF-8"] = [][]string{
 		{
 			"ABBA",
 			"42,33",
@@ -124,7 +138,18 @@ func TestFormula(t *testing.T) {
 		},
 	}
 
-	expectedThisCsv := [][]string{
+	expectedThisCsv := make(map[string][][]string)
+	expectedThisCsv["en_US.UTF-8"] = [][]string{
+		{
+			"42.33",
+			"23.00",
+			"65.3324",
+			"65.3324",
+			"32.6662",
+			"32.6662",
+		},
+	}
+	expectedThisCsv["de_DE.UTF-8"] = [][]string{
 		{
 			"42,33",
 			"23,00",
@@ -160,7 +185,18 @@ func TestRanges(t *testing.T) {
 		},
 	}
 
-	expectedThisCsv := [][]string{
+	expectedThisCsv := make(map[string][][]string)
+	expectedThisCsv["en_US.UTF-8"] = [][]string{
+		{
+			"42.33",
+			"23.00",
+			"65.3324",
+			"65.3324",
+			"32.6662",
+			"32.6662",
+		},
+	}
+	expectedThisCsv["de_DE.UTF-8"] = [][]string{
 		{
 			"42,33",
 			"23,00",

@@ -6,42 +6,46 @@ name: Build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
-env:
-  LANG: "de_DE.UTF-8"
-
 jobs:
-
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        LANG:
+          - de_DE.UTF-8
+          - en_US.UTF-8
+    env:
+      LANG: ${{ matrix.LANG }}
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
 
-    - name: de_DE.UTF-8
-      run: |
-          sudo locale-gen de_DE.UTF-8
-          sudo update-locale LANG=de_DE.UTF-8
-    - name: date
-      run: |
+      - name: date
+        run: |
           date
+      - name: env
+        run: |
+          env | grep LANG
 
-    - run: |
-        sudo apt-get -qq update && sudo apt-get install -yqq libreoffice libreoffice-l10n-de
-    - run: libreoffice --headless --version
+      - run: |
+          sudo apt-get -qq update && sudo apt-get install --no-install-recommends -yqq libreoffice libreoffice-l10n-de
+      - run: libreoffice --headless --version
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        run: go build -v ./...
 
-    - name: Test
-      run: go test -v ./...
+      - name: Test
+        run: go test -v ./...
 
-    - uses: fwilhe2/odfvalidator-action@main
+      - uses: fwilhe2/odfvalidator-action@main
