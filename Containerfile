@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: MIT
 
+# The purpose of this container is to avoid depending on the host's configuration of LibreOffice for running tests that depend on the locale
+# Based on the example golang Dockerfile on Docker Hub
+
 FROM docker.io/golang:1.24
 
 WORKDIR /usr/src/app
