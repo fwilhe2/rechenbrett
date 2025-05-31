@@ -126,77 +126,99 @@ func TestCommonDataTypes(t *testing.T) {
 	}
 }
 
-// func TestFormula(t *testing.T) {
-// 	givenThoseCells := [][]Cell{
-// 		{
-// 			MakeCell("42.3324", "float"),
-// 			MakeCell("23", "float"),
-// 			MakeCell("A1+B1", "formula"),
-// 			MakeCell("SUM(A1:B1)", "formula"),
-// 			MakeCell("(A1+B1)/2", "formula"),
-// 			MakeCell("AVERAGE(A1:B1)", "formula"),
-// 		},
-// 	}
+func TestFormula(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeCell("42.3324", "float"),
+			MakeCell("23", "float"),
+			MakeCell("A1+B1", "formula"),
+			MakeCell("SUM(A1:B1)", "formula"),
+			MakeCell("(A1+B1)/2", "formula"),
+			MakeCell("AVERAGE(A1:B1)", "formula"),
+		},
+	}
 
-// 	expectedThisCsv := [][]string{
-// 		{
-// 			"42,33",
-// 			"23,00",
-// 			"65,3324",
-// 			"65,3324",
-// 			"32,6662",
-// 			"32,6662",
-// 		},
-// 	}
+	expectedThisCsv := make(map[string][][]string)
+	expectedThisCsv["en_US.UTF-8"] = [][]string{
+		{
+			"42.33",
+			"23.00",
+			"65.3324",
+			"65.3324",
+			"32.6662",
+			"32.6662",
+		},
+	}
+	expectedThisCsv["de_DE.UTF-8"] = [][]string{
+		{
+			"42,33",
+			"23,00",
+			"65,3324",
+			"65,3324",
+			"32,6662",
+			"32,6662",
+		},
+	}
 
-// 	err := integrationTest("formula", "ods", givenThoseCells, expectedThisCsv)
-// 	if err != nil {
-// 		fmt.Printf("err: %v\n", err)
-// 		t.Fail()
-// 	}
+	err := integrationTest("formula", "ods", givenThoseCells, expectedThisCsv)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		t.Fail()
+	}
 
-// 	err = integrationTest("formula", "fods", givenThoseCells, expectedThisCsv)
-// 	if err != nil {
-// 		fmt.Printf("err: %v\n", err)
-// 		t.Fail()
-// 	}
-// }
+	err = integrationTest("formula", "fods", givenThoseCells, expectedThisCsv)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		t.Fail()
+	}
+}
 
-// func TestRanges(t *testing.T) {
-// 	givenThoseCells := [][]Cell{
-// 		{
-// 			MakeRangeCell("42.3324", "float", "InputA"),
-// 			MakeRangeCell("23", "float", "InputB"),
-// 			MakeCell("InputA+InputB", "formula"),
-// 			MakeCell("SUM(InputA:InputB)", "formula"),
-// 			MakeCell("(InputA+InputB)/2", "formula"),
-// 			MakeCell("AVERAGE(InputA:InputB)", "formula"),
-// 		},
-// 	}
+func TestRanges(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeRangeCell("42.3324", "float", "InputA"),
+			MakeRangeCell("23", "float", "InputB"),
+			MakeCell("InputA+InputB", "formula"),
+			MakeCell("SUM(InputA:InputB)", "formula"),
+			MakeCell("(InputA+InputB)/2", "formula"),
+			MakeCell("AVERAGE(InputA:InputB)", "formula"),
+		},
+	}
 
-// 	expectedThisCsv := [][]string{
-// 		{
-// 			"42,33",
-// 			"23,00",
-// 			"65,3324",
-// 			"65,3324",
-// 			"32,6662",
-// 			"32,6662",
-// 		},
-// 	}
+	expectedThisCsv := make(map[string][][]string)
+	expectedThisCsv["en_US.UTF-8"] = [][]string{
+		{
+			"42.33",
+			"23.00",
+			"65.3324",
+			"65.3324",
+			"32.6662",
+			"32.6662",
+		},
+	}
+	expectedThisCsv["de_DE.UTF-8"] = [][]string{
+		{
+			"42,33",
+			"23,00",
+			"65,3324",
+			"65,3324",
+			"32,6662",
+			"32,6662",
+		},
+	}
 
-// 	err := integrationTest("ranges", "ods", givenThoseCells, expectedThisCsv)
-// 	if err != nil {
-// 		fmt.Printf("err: %v\n", err)
-// 		t.Fail()
-// 	}
+	err := integrationTest("ranges", "ods", givenThoseCells, expectedThisCsv)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		t.Fail()
+	}
 
-// 	err = integrationTest("ranges", "fods", givenThoseCells, expectedThisCsv)
-// 	if err != nil {
-// 		fmt.Printf("err: %v\n", err)
-// 		t.Fail()
-// 	}
-// }
+	err = integrationTest("ranges", "fods", givenThoseCells, expectedThisCsv)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		t.Fail()
+	}
+}
 
 func TestUnitRanges(t *testing.T) {
 	givenThoseCells := [][]Cell{
