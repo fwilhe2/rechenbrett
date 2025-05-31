@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 Florian Wilhelm
+
+SPDX-License-Identifier: MIT
+-->
+
 # rechenbrett
 
 A go library for building Open Document spreadsheet files.

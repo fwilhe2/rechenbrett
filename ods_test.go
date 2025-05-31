@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Florian Wilhelm
+//
+// SPDX-License-Identifier: MIT
+
 package ods
 
 import (

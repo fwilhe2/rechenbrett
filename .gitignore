@@ -1,2 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Florian Wilhelm
+#
+# SPDX-License-Identifier: MIT
+
 output/
 integration-test-*
