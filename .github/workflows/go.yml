@@ -36,10 +36,10 @@ jobs:
           date
       - name: env
         run: |
-          env
+          env | grep LANG
 
       - run: |
-          sudo apt-get -qq update && sudo apt-get install -yqq libreoffice libreoffice-l10n-de
+          sudo apt-get -qq update && sudo apt-get install --no-install-recommends -yqq libreoffice libreoffice-l10n-de
       - run: libreoffice --headless --version
 
       - name: Build
