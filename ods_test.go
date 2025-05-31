@@ -15,12 +15,16 @@ func integrationTest(testName string, format string, inputCells [][]Cell, expect
 	spreadsheet := MakeSpreadsheet(inputCells)
 
 	actual := MakeFlatOds(spreadsheet)
-	os.Mkdir("output", 0o777)
+
+	tempDir, err := os.MkdirTemp(".", fmt.Sprintf("integration-test-%s-", testName))
+	if err != nil {
+		panic(err)
+	}
 
 	if format == "ods" {
 		buff := MakeOds(spreadsheet)
 
-		archive, err := os.Create(fmt.Sprintf("output/%s.%s", testName, format))
+		archive, err := os.Create(fmt.Sprintf("%s/%s.%s", tempDir, testName, format))
 		if err != nil {
 			panic(err)
 		}
@@ -29,17 +33,17 @@ func integrationTest(testName string, format string, inputCells [][]Cell, expect
 
 		archive.Close()
 	} else {
-		os.WriteFile(fmt.Sprintf("output/%s.%s", testName, format), []byte(actual), 0o644)
+		os.WriteFile(fmt.Sprintf("%s/%s.%s", tempDir, testName, format), []byte(actual), 0o644)
 	}
 
-	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" output/%s.%s --outdir output", testName, format)
+	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" %s/%s.%s --outdir %s", tempDir, testName, format, tempDir)
 	loCmd := exec.Command("bash", "-c", cmd)
-	_, err := loCmd.Output()
+	_, err = loCmd.Output()
 	if err != nil {
 		panic(err)
 	}
 
-	actualCsvBytes, _ := os.ReadFile(fmt.Sprintf("output/%s.csv", testName))
+	actualCsvBytes, _ := os.ReadFile(fmt.Sprintf("%s/%s.csv", tempDir, testName))
 
 	actualCsv := string(actualCsvBytes)
 
