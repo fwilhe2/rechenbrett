@@ -43,7 +43,6 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv m
 
 	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" %s/%s-%s.%s -env:LANG=%s --outdir %s", tempDir, testName, lang, format, lang, tempDir)
 	loCmd := exec.Command("bash", "-c", cmd)
-	loCmd.Env = []string{"LANG=" + lang}
 	_, err = loCmd.Output()
 	if err != nil {
 		panic(err)
