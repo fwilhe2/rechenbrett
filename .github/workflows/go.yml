@@ -33,10 +33,6 @@ jobs:
       with:
         go-version: '1.24'
 
-    - name: Set locale
-      run: |
-          sudo locale-gen ${{ matrix.LANG.locale }}
-          sudo update-locale LANG=${{ matrix.LANG.locale }}
     - name: date
       run: |
           date
