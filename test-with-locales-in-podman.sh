@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-FileCopyrightText: 2025 Florian Wilhelm
+#
+# SPDX-License-Identifier: MIT
+
 set -o errexit
 
 podman build -t test-rechenbrett .

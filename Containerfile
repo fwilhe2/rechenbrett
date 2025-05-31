@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Florian Wilhelm
+#
+# SPDX-License-Identifier: MIT
+
 FROM docker.io/golang:1.24
 
 WORKDIR /usr/src/app
