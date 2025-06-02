@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+ <office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0" office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.spreadsheet">
+   <office:automatic-styles>
+     <number:number-style style:name="___FLOAT_STYLE" style:volatile="true">
+       <number:number number:decimal-places="2" number:min-decimal-places="2" number:min-integer-digits="1" number:grouping="true"></number:number>
+     </number:number-style>
+     <number:number-style style:name="__FLOAT_STYLE">
+       <style:text-properties fo:color="#ff0000"></style:text-properties>
+       <number:number number:decimal-places="2" number:min-decimal-places="" number:min-integer-digits="1" number:grouping="true"></number:number>
+       <style:map style:condition="value()&gt;=0" style:apply-style-name="___FLOAT_STYLE"></style:map>
+     </number:number-style>
+     <number:date-style style:name="__DATE_STYLE">
+       <number:year number:style="long"></number:year>
+       <number:text>-</number:text>
+       <number:month number:style="long"></number:month>
+       <number:text>-</number:text>
+       <number:day number:style="long"></number:day>
+     </number:date-style>
+     <number:number-style style:name="__TIME_STYLE">
+       <number:number number:decimal-places="long" number:min-decimal-places="" number:min-integer-digits="" number:grouping=""></number:number>
+       <number:number number:decimal-places=":" number:min-decimal-places="" number:min-integer-digits="" number:grouping=""></number:number>
+       <number:number number:decimal-places="long" number:min-decimal-places="" number:min-integer-digits="" number:grouping=""></number:number>
+       <number:number number:decimal-places=":" number:min-decimal-places="" number:min-integer-digits="" number:grouping=""></number:number>
+       <number:number number:decimal-places="long" number:min-decimal-places="" number:min-integer-digits="" number:grouping=""></number:number>
+     </number:number-style>
+     <number:currency-style style:name="__EUR_STYLE" style:volatile="true" number:language="en" number:country="DE">
+       <number:number number:decimal-places="2" number:min-decimal-places="0" number:min-integer-digits="1" number:grouping="true"></number:number>
+       <number:text></number:text>
+       <number:currency-symbol number:language="de" number:country="DE">€</number:currency-symbol>
+     </number:currency-style>
+     <number:number-style style:name="__PERCENTAGE_STYLE">
+       <number:number number:decimal-places="2" number:min-decimal-places="" number:min-integer-digits="1" number:grouping=""></number:number>
+       <number:number number:decimal-places="%" number:min-decimal-places="" number:min-integer-digits="" number:grouping=""></number:number>
+     </number:number-style>
+     <style:style style:name="FLOAT_STYLE" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="__FLOAT_STYLE"></style:style>
+     <style:style style:name="DATE_STYLE" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="__DATE_STYLE"></style:style>
+     <style:style style:name="TIME_STYLE" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="__TIME_STYLE"></style:style>
+     <style:style style:name="EUR_STYLE" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="__EUR_STYLE"></style:style>
+     <style:style style:name="PERCENTAGE_STYLE" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="__PERCENTAGE_STYLE"></style:style>
+   </office:automatic-styles>
+   <office:body>
+     <office:spreadsheet>
+       <table:table table:name="Sheet1">
+         <table:table-row>
+           <table:table-cell office:value-type="float" calcext:value-type="float" office:value="42.3324" table:style-name="FLOAT_STYLE"></table:table-cell>
+           <table:table-cell office:value-type="float" calcext:value-type="float" office:value="23" table:style-name="FLOAT_STYLE"></table:table-cell>
+           <table:table-cell table:formula="InputA+InputB"></table:table-cell>
+           <table:table-cell table:formula="SUM(InputA:InputB)"></table:table-cell>
+           <table:table-cell table:formula="(InputA+InputB)/2"></table:table-cell>
+           <table:table-cell table:formula="AVERAGE(InputA:InputB)"></table:table-cell>
+         </table:table-row>
+       </table:table>
+       <table:named-expressions>
+         <table:named-range table:name="InputA" table:base-cell-address="$Sheet1.$A$1" table:cell-range-address="$Sheet1.$A$1"></table:named-range>
+         <table:named-range table:name="InputB" table:base-cell-address="$Sheet1.$B$1" table:cell-range-address="$Sheet1.$B$1"></table:named-range>
+       </table:named-expressions>
+     </office:spreadsheet>
+   </office:body>
+ </office:document>

@@ -6,6 +6,7 @@ package ods
 
 import (
 	"encoding/csv"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"log"
@@ -247,6 +248,24 @@ func TestUnitRanges(t *testing.T) {
 	}
 
 	if !strings.Contains(actual, "<table:named-range table:name=\"InputF\" table:base-cell-address=\"$Sheet1.$B$5\" table:cell-range-address=\"$Sheet1.$B$5\"></table:named-range>") {
+		t.Fail()
+	}
+}
+
+func TestParseFlatOdsXml(t *testing.T) {
+	dat, err := os.ReadFile("test-files/ranges-en_US.UTF-8.fods")
+	if err != nil {
+		t.Fail()
+	}
+	fodsXmlString := string(dat)
+
+	var flatOds FlatOds2
+	if err := xml.Unmarshal([]byte(fodsXmlString), &flatOds); err != nil {
+		panic(err)
+	}
+	fmt.Println(flatOds)
+
+	if flatOds.Body.Spreadsheet.Tables[0].Rows[0].Cells[0].Value != "42.3324" {
 		t.Fail()
 	}
 }

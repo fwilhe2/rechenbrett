@@ -390,6 +390,21 @@ type FlatOds struct {
 	Body            Body            `xml:"office:body"`
 }
 
+type FlatOds2 struct {
+	OfficeDocument  xml.Name        `xml:"office:document"`
+	XMLNSOffice     string          `xml:"xmlns:office,attr"`
+	XMLNSTable      string          `xml:"xmlns:table,attr"`
+	XMLNSText       string          `xml:"xmlns:text,attr"`
+	XMLNSStyle      string          `xml:"xmlns:style,attr"`
+	XMLNSFo         string          `xml:"xmlns:fo,attr"`
+	XMLNSNumber     string          `xml:"xmlns:number,attr"`
+	XMLNSCalcext    string          `xml:"xmlns:calcext,attr"`
+	OfficeVersion   string          `xml:"office:version,attr"`
+	OfficeMimetype  string          `xml:"office:mimetype,attr"`
+	AutomaticStyles AutomaticStyles `xml:"office:automatic-styles"`
+	Body            Body            `xml:"office:body"`
+}
+
 type OfficeDocumentContent struct {
 	XMLName         xml.Name        `xml:"office:document-content"`
 	XMLNSOffice     string          `xml:"xmlns:office,attr"`
