@@ -250,3 +250,13 @@ func TestUnitRanges(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestUnitTimeParse(t *testing.T) {
+	if timeString("19:03:00") != "PT19H03M00S" {
+		t.Fail()
+	}
+
+	if timeString("19:03") != "PT19H03M00S" {
+		t.Fail()
+	}
+}
