@@ -221,10 +221,13 @@ func xmlByteArrayToStringWithHeader(input []byte) string {
 
 func timeString(input string) string {
 	parts := strings.Split(input, ":")
-	if len(parts) != 3 {
-		panic("xx")
+	if len(parts) == 2 {
+		return "PT" + parts[0] + "H" + parts[1] + "M00S"
 	}
-	return "PT" + parts[0] + "H" + parts[1] + "M" + parts[2] + "S"
+	if len(parts) == 3 {
+		return "PT" + parts[0] + "H" + parts[1] + "M" + parts[2] + "S"
+	}
+	panic("Invalid date format " + input)
 }
 
 func createCell(cellData CellData) Cell {
