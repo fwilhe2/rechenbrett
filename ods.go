@@ -10,6 +10,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 )
 
@@ -227,7 +228,27 @@ func timeString(input string) string {
 	if len(parts) == 3 {
 		return "PT" + parts[0] + "H" + parts[1] + "M" + parts[2] + "S"
 	}
-	panic("Invalid date format " + input)
+	panic("Invalid time format " + input)
+}
+
+func dateString(date string) string {
+	germanFormat := regexp.MustCompile(`^(\d{1,2})\.(\d{1,2})\.(\d{4})$`)
+	usFormat := regexp.MustCompile(`^(\d{1,2})/(\d{1,2})/(\d{4})$`)
+	isoFormat := regexp.MustCompile(`^(\d{4})-(\d{1,2})-(\d{1,2})$`)
+
+	switch {
+	case germanFormat.MatchString(date):
+		matches := germanFormat.FindStringSubmatch(date)
+		return fmt.Sprintf("%s-%02s-%02s", matches[3], matches[2], matches[1])
+	case usFormat.MatchString(date):
+		matches := usFormat.FindStringSubmatch(date)
+		return fmt.Sprintf("%s-%02s-%02s", matches[3], matches[1], matches[2])
+	case isoFormat.MatchString(date):
+		matches := isoFormat.FindStringSubmatch(date)
+		return fmt.Sprintf("%s-%02s-%02s", matches[1], matches[2], matches[3])
+	default:
+		panic("unknown date format")
+	}
 }
 
 func createCell(cellData CellData) Cell {
@@ -246,7 +267,7 @@ func createCell(cellData CellData) Cell {
 	case "date":
 		cell.CalcExtType = "date"
 		cell.StyleName = "DATE_STYLE"
-		cell.DateValue = cellData.Value
+		cell.DateValue = dateString(cellData.Value)
 	case "time":
 		cell.CalcExtType = "time"
 		cell.StyleName = "TIME_STYLE"

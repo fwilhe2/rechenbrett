@@ -82,6 +82,7 @@ func TestCommonDataTypes(t *testing.T) {
 			MakeCell("ABBA", "string"),
 			MakeCell("42.3324", "float"),
 			MakeCell("2022-02-02", "date"),
+			MakeCell("2.2.2022", "date"),
 			MakeCell("19:03:00", "time"),
 			MakeCell("2.22", "currency"),
 			MakeCell("-2.22", "currency"),
@@ -95,6 +96,7 @@ func TestCommonDataTypes(t *testing.T) {
 			"ABBA",
 			"42.33",
 			"2022-02-02",
+			"2022-02-02",
 			"07:03:00 PM",
 			"2.22€",
 			"-2.22€",
@@ -105,6 +107,7 @@ func TestCommonDataTypes(t *testing.T) {
 		{
 			"ABBA",
 			"42,33",
+			"2022-02-02",
 			"2022-02-02",
 			"19:03:00",
 			"2.22€",
@@ -258,5 +261,21 @@ func TestUnitTimeParse(t *testing.T) {
 
 	if timeString("19:03") != "PT19H03M00S" {
 		t.Fail()
+	}
+}
+
+func TestUnitDateParse(t *testing.T) {
+	testDates := []string{
+		"01.10.1903",
+		"1.10.1903",
+		"10/01/1903",
+		"10/1/1903",
+		"1903-10-01",
+	}
+
+	for _, candidate := range testDates {
+		if dateString(candidate) != "1903-10-01" {
+			t.Fail()
+		}
 	}
 }
