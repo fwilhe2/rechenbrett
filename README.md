@@ -22,6 +22,8 @@ For example, if you want to keep track of your bank account statements, which yo
 
 [mkods-demo](https://github.com/fwilhe2/mkods-demo) shows how *mkods* can be used in combination with node.js to transform complex json structures into clean spreadsheets
 
+[csv-to-ods](https://github.com/fwilhe2/csv-to-ods) converts csv files to ods with optional type hints
+
 [kalkulationsbogen](https://github.com/fwilhe2/kalkulationsbogen) is similar to rechenbrett, but written in TypeScript for node.js
 
 ## License
