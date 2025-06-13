@@ -15,11 +15,15 @@ import (
 	"testing"
 )
 
+func assert(condition bool, message string, t *testing.T) {
+	if !condition {
+		t.Error(message)
+	}
+}
+
 func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv map[string][][]string) error {
 	lang := os.Getenv("LANG")
 	spreadsheet := MakeSpreadsheet(inputCells)
-
-	actual := MakeFlatOds(spreadsheet)
 
 	tempDir, err := os.MkdirTemp(".", fmt.Sprintf("integration-test-%s-%s-", testName, lang))
 	if err != nil {
@@ -38,6 +42,7 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv m
 
 		archive.Close()
 	} else {
+		actual := MakeFlatOds(spreadsheet)
 		os.WriteFile(fmt.Sprintf("%s/%s-%s.%s", tempDir, testName, lang, format), []byte(actual), 0o644)
 	}
 
@@ -117,16 +122,10 @@ func TestCommonDataTypes(t *testing.T) {
 	}
 
 	err := integrationTest("common-data-types", "ods", givenThoseCells, expectedThisCsv)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		t.Fail()
-	}
+	assert(err == nil, fmt.Sprintf("err: %v\n", err), t)
 
 	err = integrationTest("common-data-types", "fods", givenThoseCells, expectedThisCsv)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		t.Fail()
-	}
+	assert(err == nil, fmt.Sprintf("err: %v\n", err), t)
 }
 
 func TestFormula(t *testing.T) {
@@ -164,16 +163,10 @@ func TestFormula(t *testing.T) {
 	}
 
 	err := integrationTest("formula", "ods", givenThoseCells, expectedThisCsv)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		t.Fail()
-	}
+	assert(err == nil, fmt.Sprintf("err: %v\n", err), t)
 
 	err = integrationTest("formula", "fods", givenThoseCells, expectedThisCsv)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		t.Fail()
-	}
+	assert(err == nil, fmt.Sprintf("err: %v\n", err), t)
 }
 
 func TestRanges(t *testing.T) {
@@ -211,16 +204,10 @@ func TestRanges(t *testing.T) {
 	}
 
 	err := integrationTest("ranges", "ods", givenThoseCells, expectedThisCsv)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		t.Fail()
-	}
+	assert(err == nil, fmt.Sprintf("err: %v\n", err), t)
 
 	err = integrationTest("ranges", "fods", givenThoseCells, expectedThisCsv)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		t.Fail()
-	}
+	assert(err == nil, fmt.Sprintf("err: %v\n", err), t)
 }
 
 func TestUnitRanges(t *testing.T) {
@@ -245,26 +232,26 @@ func TestUnitRanges(t *testing.T) {
 
 	actual := MakeFlatOds(spreadsheet)
 
-	if !strings.Contains(actual, "<table:named-range table:name=\"InputA\" table:base-cell-address=\"$Sheet1.$A$1\" table:cell-range-address=\"$Sheet1.$A$1\"></table:named-range>") {
-		t.Fail()
-	}
-
-	if !strings.Contains(actual, "<table:named-range table:name=\"InputF\" table:base-cell-address=\"$Sheet1.$B$5\" table:cell-range-address=\"$Sheet1.$B$5\"></table:named-range>") {
-		t.Fail()
-	}
+	assert(strings.Contains(actual, "<table:named-range table:name=\"InputA\" table:base-cell-address=\"$Sheet1.$A$1\" table:cell-range-address=\"$Sheet1.$A$1\"></table:named-range>"), "Expected input A in spreadsheet", t)
+	assert(strings.Contains(actual, "<table:named-range table:name=\"InputF\" table:base-cell-address=\"$Sheet1.$B$5\" table:cell-range-address=\"$Sheet1.$B$5\"></table:named-range>"), "Expected input F in spreadsheet", t)
 }
 
 func TestUnitTimeParse(t *testing.T) {
-	if timeString("19:03:00") != "PT19H03M00S" {
-		t.Fail()
+	expected := "PT19H03M00S"
+
+	testTimes := []string{
+		"19:03:00",
+		"19:03",
 	}
 
-	if timeString("19:03") != "PT19H03M00S" {
-		t.Fail()
+	for _, candidate := range testTimes {
+		assert(timeString(candidate) == expected, fmt.Sprintf("Expected %s to be parsed as %s", candidate, expected), t)
 	}
 }
 
 func TestUnitDateParse(t *testing.T) {
+	expected := "1903-10-01"
+
 	testDates := []string{
 		"01.10.1903",
 		"1.10.1903",
@@ -274,8 +261,6 @@ func TestUnitDateParse(t *testing.T) {
 	}
 
 	for _, candidate := range testDates {
-		if dateString(candidate) != "1903-10-01" {
-			t.Fail()
-		}
+		assert(dateString((candidate)) == expected, fmt.Sprintf("Expected %s to be formatted as %s", candidate, expected), t)
 	}
 }
