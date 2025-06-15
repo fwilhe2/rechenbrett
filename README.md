@@ -16,6 +16,48 @@ It can create 'normal' ods (Open Document Spreadsheet) files (`*.ods`) and 'flat
 Due to their plain text nature, they work well with version control systems such as git.
 For example, if you want to keep track of your bank account statements, which you might get in some sort of complex xml or json structure, you could use rechenbrett to convert them into a clean flat ods structure which can be version controlled and produce meaningful diffs.
 
+## Example usage
+
+```go
+package main
+
+import (
+	"os"
+
+	rb "github.com/fwilhe2/rechenbrett"
+)
+
+func main() {
+	inputCells := [][]rb.Cell{
+		{
+			rb.MakeCell("ABBA", "string"),
+			rb.MakeCell("42.3324", "float"),
+			rb.MakeCell("2022-02-02", "date"),
+			rb.MakeCell("2.2.2022", "date"),
+			rb.MakeCell("19:03:00", "time"),
+			rb.MakeCell("2.22", "currency"),
+			rb.MakeCell("-2.22", "currency"),
+			rb.MakeCell("0.4223", "percentage"),
+		},
+	}
+
+	spreadsheet := rb.MakeSpreadsheet(inputCells)
+
+	// create ods file
+	buff := rb.MakeOds(spreadsheet)
+	archive, err := os.Create("myfile.ods")
+	if err != nil {
+		panic(err)
+	}
+	archive.Write(buff.Bytes())
+	archive.Close()
+
+	// create fods file
+	flatOdsString := rb.MakeFlatOds(spreadsheet)
+	os.WriteFile("myfile.fods", []byte(flatOdsString), 0o644)
+}
+```
+
 ## Related
 
 [mkods](https://github.com/fwilhe2/mkods) is a simple go wrapper for rechenbrett to make it usable as a cli tool
