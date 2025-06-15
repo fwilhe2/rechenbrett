@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2016-2025 Carlos Alexandro Becker
+# SPDX-FileCopyrightText: 2025 Florian Wilhelm
+#
+# SPDX-License-Identifier: MIT
+
 name: goreleaser
 
 on:
