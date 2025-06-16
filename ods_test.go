@@ -91,6 +91,9 @@ func TestCommonDataTypes(t *testing.T) {
 			MakeCell("19:03:00", "time"),
 			MakeCell("2.22", "currency"),
 			MakeCell("-2.22", "currency"),
+			MakeCell("2.22", "currency-usd"),
+			MakeCell("2.22", "currency-gbp"),
+			MakeCell("2.22", "currency-eur"),
 			MakeCell("0.4223", "percentage"),
 		},
 	}
@@ -105,6 +108,9 @@ func TestCommonDataTypes(t *testing.T) {
 			"07:03:00 PM",
 			"2.22€",
 			"-2.22€",
+			"2.22$",
+			"2.22£",
+			"2.22€",
 			"42.23%",
 		},
 	}
@@ -117,6 +123,9 @@ func TestCommonDataTypes(t *testing.T) {
 			"19:03:00",
 			"2.22€",
 			"-2.22€",
+			"2.22$",
+			"2.22£",
+			"2.22€",
 			"42,23 %",
 		},
 	}
