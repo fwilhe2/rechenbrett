@@ -8,13 +8,18 @@ SPDX-License-Identifier: MIT
 
 A go library for building Open Document spreadsheet files.
 
-It can create 'normal' ods (Open Document Spreadsheet) files (`*.ods`) and 'flat' ods files (`*.fods`).
+It can create 'normal' ods (Open Document Spreadsheet) files (`*.ods`) and 'flat' Open Document Spreadsheet files (`*.fods`).
 
 `ods` files are zipped and can be opened with various commercial and open source spreadsheet applications.
+This is the default file format used by LibreOffice Calc when saving data.
 
 `fods` files are plain xml files without compression.
+They contain the same information than their zipped counterparts, but wrap everything in one large xml document.
 Due to their plain text nature, they work well with version control systems such as git.
 For example, if you want to keep track of your bank account statements, which you might get in some sort of complex xml or json structure, you could use rechenbrett to convert them into a clean flat ods structure which can be version controlled and produce meaningful diffs.
+
+Sadly, if you save `fods` files using LibreOffice Calc, it changes the file in many places which makes it harder to diff two versions of the same file in a meaningful way.
+Post processing the file using [`flat-odf-cleanup.py`](https://github.com/fwilhe2/odf-utils/blob/main/flat-odf-cleanup.py) can mitigate the issue, but does not fully resolve it.
 
 ## Example usage
 
