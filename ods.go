@@ -256,6 +256,7 @@ func createCell(cellData CellData) Cell {
 		ValueType: cellData.ValueType,
 		Range:     cellData.Range,
 	}
+
 	switch cellData.ValueType {
 	case "string":
 		cell.Text = cellData.Value
@@ -272,11 +273,6 @@ func createCell(cellData CellData) Cell {
 		cell.CalcExtType = "time"
 		cell.StyleName = "TIME_STYLE"
 		cell.TimeValue = timeString(cellData.Value)
-	case "currency":
-		cell.CalcExtType = "currency"
-		cell.StyleName = "EUR_STYLE"
-		cell.Value = cellData.Value
-		cell.Currency = "EUR"
 	case "percentage":
 		cell.CalcExtType = "percentage"
 		cell.StyleName = "PERCENTAGE_STYLE"
@@ -284,6 +280,26 @@ func createCell(cellData CellData) Cell {
 	case "formula":
 		cell.Formula = cellData.Value
 		cell.ValueType = ""
+	default:
+		if strings.HasPrefix(cellData.ValueType, "currency") {
+			if strings.HasSuffix(strings.ToLower(cellData.ValueType), "usd") {
+				cell.CalcExtType = "currency"
+				cell.StyleName = "USD_STYLE"
+				cell.Value = cellData.Value
+				cell.Currency = "USD"
+			} else if strings.HasSuffix(strings.ToLower(cellData.ValueType), "gbp") {
+				cell.CalcExtType = "currency"
+				cell.StyleName = "GBP_STYLE"
+				cell.Value = cellData.Value
+				cell.Currency = "GBP"
+			} else {
+				// Assuming Euro as the default, just because it is the default for me :shrug:
+				cell.CalcExtType = "currency"
+				cell.StyleName = "EUR_STYLE"
+				cell.Value = cellData.Value
+				cell.Currency = "EUR"
+			}
+		}
 	}
 	return cell
 }
@@ -351,6 +367,40 @@ func createNumberStyles() []interface{} {
 				Symbol:   "€",
 			},
 		},
+		CurrencyStyle{
+			Name:     "__USD_STYLE",
+			Volatile: "true",
+			Language: "en",
+			Country:  "US",
+			Number: NumberFormat{
+				DecimalPlaces:    2,
+				MinIntegerDigits: 1,
+				Grouping:         true,
+			},
+			Texts: []TextElement{{}},
+			CurrencySymbol: CurrencySymbol{
+				Language: "en",
+				Country:  "US",
+				Symbol:   "$",
+			},
+		},
+		CurrencyStyle{
+			Name:     "__GBP_STYLE",
+			Volatile: "true",
+			Language: "en",
+			Country:  "GB",
+			Number: NumberFormat{
+				DecimalPlaces:    2,
+				MinIntegerDigits: 1,
+				Grouping:         true,
+			},
+			Texts: []TextElement{{}},
+			CurrencySymbol: CurrencySymbol{
+				Language: "en",
+				Country:  "GB",
+				Symbol:   "£",
+			},
+		},
 		NumberStyle{
 			Name: "__PERCENTAGE_STYLE",
 			NumberElements: []NumberElement{
@@ -370,6 +420,8 @@ func createStyles() []Style {
 		{Name: "DATE_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "__DATE_STYLE"},
 		{Name: "TIME_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "__TIME_STYLE"},
 		{Name: "EUR_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "__EUR_STYLE"},
+		{Name: "USD_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "__USD_STYLE"},
+		{Name: "GBP_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "__GBP_STYLE"},
 		{Name: "PERCENTAGE_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "__PERCENTAGE_STYLE"},
 	}
 }
