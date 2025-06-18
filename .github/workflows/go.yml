@@ -14,6 +14,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: ghcr.io/fwilhe2/go-libreoffice:latest
     strategy:
       fail-fast: false
       matrix:
@@ -26,20 +27,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-
       - name: date
         run: |
           date
+
       - name: env
         run: |
           env | grep LANG
 
-      - run: |
-          sudo apt-get -qq update && sudo apt-get install --no-install-recommends -yqq libreoffice libreoffice-l10n-de
       - run: libreoffice --headless --version
 
       - name: Build
