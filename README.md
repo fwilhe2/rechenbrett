@@ -65,7 +65,7 @@ func main() {
 
 ## Related
 
-[mkods](https://github.com/fwilhe2/mkods) is a simple go wrapper for rechenbrett to make it usable as a cli tool
+[json-to-ods](https://github.com/fwilhe2/mkods) is a simple go wrapper for rechenbrett to make it usable as a cli tool
 
 [mkods-demo](https://github.com/fwilhe2/mkods-demo) shows how *mkods* can be used in combination with node.js to transform complex json structures into clean spreadsheets
 
