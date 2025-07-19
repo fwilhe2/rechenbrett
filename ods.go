@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"log"
 	"regexp"
 	"strings"
@@ -185,35 +186,55 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 		log.Panic(err)
 	}
 
-	byesBuffer := new(bytes.Buffer)
-	w := zip.NewWriter(byesBuffer)
+	buf := new(bytes.Buffer)
 
-	files := []struct {
-		Name, Body string
-	}{
-		{"mimetype", "application/vnd.oasis.opendocument.spreadsheet"},
-		{"META-INF/manifest.xml", xmlByteArrayToStringWithHeader(manifestStr)},
-		{"content.xml", xmlByteArrayToStringWithHeader(contentStr)},
-		{"styles.xml", xmlByteArrayToStringWithHeader(stylesStr)},
-	}
-	for _, file := range files {
-		f, err := w.Create(file.Name)
-		if err != nil {
-			log.Fatal(err)
-		}
-		_, err = f.Write([]byte(file.Body))
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+	zipWriter := zip.NewWriter(buf)
 
-	// Make sure to check the error on Close.
-	err = w.Close()
+	mimetypeHeader := &zip.FileHeader{
+		Name:   "mimetype",
+		Method: zip.Store, // IMPORTANT: Use zip.Store for no compression.
+	}
+	writer, err := zipWriter.CreateHeader(mimetypeHeader)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = io.WriteString(writer, "application/vnd.oasis.opendocument.spreadsheet")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return byesBuffer
+	writer, err = zipWriter.Create("META-INF/manifest.xml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = io.WriteString(writer, xmlByteArrayToStringWithHeader(manifestStr))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	writer, err = zipWriter.Create("content.xml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = io.WriteString(writer, xmlByteArrayToStringWithHeader(contentStr))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	writer, err = zipWriter.Create("styles.xml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = io.WriteString(writer, xmlByteArrayToStringWithHeader(stylesStr))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := zipWriter.Close(); err != nil {
+		log.Fatal(err)
+	}
+
+	return buf
 }
 
 func xmlByteArrayToStringWithHeader(input []byte) string {
