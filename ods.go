@@ -12,8 +12,12 @@ import (
 	"io"
 	"log"
 	"regexp"
+	"runtime"
 	"strings"
+	"time"
 )
+
+var version = "dev"
 
 func MakeCell(value, valueType string) Cell {
 	return createCell(CellData{
@@ -118,6 +122,18 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 }
 
 func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
+
+	var meta DocumentMeta
+	meta.Meta = Meta{
+		CreationDate: TimeWrapper{Time: time.Time{}},
+		Date: TimeWrapper{Time: time.Time{}},
+		EditingDuration:  "PT42S",
+		EditingCycles: 0,
+		Generator: fmt.Sprintf("Rechenbrett/%s$%s%s", version, runtime.GOOS, runtime.GOARCH),
+	}
+	meta.XMLNSOffice =  "urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+
+
 	manifest := Manifest{
 		XMLNS: "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
 		Entries: []FileEntry{
@@ -189,6 +205,33 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	buf := new(bytes.Buffer)
 
 	zipWriter := zip.NewWriter(buf)
+	metaStr, err := xml.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	byesBuffer := new(bytes.Buffer)
+	w := zip.NewWriter(byesBuffer)
+
+	files := []struct {
+		Name, Body string
+	}{
+		{"mimetype", "application/vnd.oasis.opendocument.spreadsheet"},
+		{"meta.xml", xmlByteArrayToStringWithHeader(metaStr)},
+		{"META-INF/manifest.xml", xmlByteArrayToStringWithHeader(manifestStr)},
+		{"content.xml", xmlByteArrayToStringWithHeader(contentStr)},
+		{"styles.xml", xmlByteArrayToStringWithHeader(stylesStr)},
+	}
+	for _, file := range files {
+		f, err := w.Create(file.Name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = f.Write([]byte(file.Body))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	mimetypeHeader := &zip.FileHeader{
 		Name:   "mimetype",
@@ -208,6 +251,15 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 		log.Fatal(err)
 	}
 	_, err = io.WriteString(writer, xmlByteArrayToStringWithHeader(manifestStr))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	writer, err = zipWriter.Create("meta.xml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = io.WriteString(writer, xmlByteArrayToStringWithHeader(metaStr))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -660,4 +712,43 @@ type NamedRange struct {
 	Name             string `xml:"table:name,attr"`
 	BaseCellAddress  string `xml:"table:base-cell-address,attr"`
 	CellRangeAddress string `xml:"table:cell-range-address,attr"`
+}
+
+type DocumentMeta struct {
+	XMLName xml.Name `xml:"office:document-meta"`
+	XMLNSOffice     string          `xml:"xmlns:office,attr"`
+	Meta    Meta      `xml:"office:meta"`
+}
+
+type Meta struct {
+	CreationDate     TimeWrapper       `xml:"meta:creation-date"`
+	Date             TimeWrapper       `xml:"dc:date"`
+	EditingDuration  string            `xml:"meta:editing-duration"`
+	EditingCycles    int               `xml:"meta:editing-cycles"`
+	DocumentStatistic DocumentStatistic `xml:"meta:document-statistic"`
+	Generator        string            `xml:"meta:generator"`
+}
+
+type DocumentStatistic struct {
+	TableCount  int `xml:"meta:table-count,attr"`
+	CellCount   int `xml:"meta:cell-count,attr"`
+	ObjectCount int `xml:"meta:object-count,attr"`
+}
+
+// TimeWrapper is a helper to unmarshal time from the ODF timestamp format.
+type TimeWrapper struct {
+	time.Time
+}
+
+func (t *TimeWrapper) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var content string
+	if err := d.DecodeElement(&content, &start); err != nil {
+		return err
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, content)
+	if err != nil {
+		return err
+	}
+	t.Time = parsed
+	return nil
 }
