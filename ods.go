@@ -346,6 +346,7 @@ func createNumberStyles() []interface{} {
 			NumberElements: []NumberElement{
 				{
 					DecimalPlaces:    "2",
+					MinDecimalPlaces: "2",
 					MinIntegerDigits: "1",
 					Grouping:         "true",
 				},
