@@ -374,7 +374,7 @@ func createNumberStyles() []interface{} {
 			},
 		},
 		CurrencyStyle{
-			Name:     "__EUR_STYLE",
+			Name:     "___EUR_STYLE",
 			Volatile: "true",
 			Language: "en",
 			Country:  "DE",
@@ -384,7 +384,6 @@ func createNumberStyles() []interface{} {
 				MinIntegerDigits: 1,
 				Grouping:         true,
 			},
-			Texts: []TextElement{{}},
 			CurrencySymbol: CurrencySymbol{
 				Language: "de",
 				Country:  "DE",
@@ -392,7 +391,29 @@ func createNumberStyles() []interface{} {
 			},
 		},
 		CurrencyStyle{
-			Name:     "__USD_STYLE",
+			Name:           "__EUR_STYLE",
+			Volatile:       "true",
+			Language:       "en",
+			Country:        "DE",
+			TextProperties: &TextProperties{Color: "#ff0000"},
+			Texts: []TextElement{
+				{"−"},
+			},
+			Number: NumberFormat{
+				DecimalPlaces:    2,
+				MinDecimalPlaces: 2,
+				MinIntegerDigits: 1,
+				Grouping:         true,
+			},
+			CurrencySymbol: CurrencySymbol{
+				Language: "de",
+				Country:  "DE",
+				Symbol:   "€",
+			},
+			StyleMap: &StyleMap{Condition: "value()>=0", ApplyStyleName: "___EUR_STYLE"},
+		},
+		CurrencyStyle{
+			Name:     "___USD_STYLE",
 			Volatile: "true",
 			Language: "en",
 			Country:  "US",
@@ -402,7 +423,6 @@ func createNumberStyles() []interface{} {
 				MinIntegerDigits: 1,
 				Grouping:         true,
 			},
-			Texts: []TextElement{{}},
 			CurrencySymbol: CurrencySymbol{
 				Language: "en",
 				Country:  "US",
@@ -410,7 +430,29 @@ func createNumberStyles() []interface{} {
 			},
 		},
 		CurrencyStyle{
-			Name:     "__GBP_STYLE",
+			Name:           "__USD_STYLE",
+			Volatile:       "true",
+			Language:       "en",
+			Country:        "US",
+			TextProperties: &TextProperties{Color: "#ff0000"},
+			Texts: []TextElement{
+				{"−"},
+			},
+			Number: NumberFormat{
+				DecimalPlaces:    2,
+				MinDecimalPlaces: 2,
+				MinIntegerDigits: 1,
+				Grouping:         true,
+			},
+			CurrencySymbol: CurrencySymbol{
+				Language: "en",
+				Country:  "US",
+				Symbol:   "$",
+			},
+			StyleMap: &StyleMap{Condition: "value()>=0", ApplyStyleName: "___USD_STYLE"},
+		},
+		CurrencyStyle{
+			Name:     "___GBP_STYLE",
 			Volatile: "true",
 			Language: "en",
 			Country:  "GB",
@@ -420,12 +462,33 @@ func createNumberStyles() []interface{} {
 				MinIntegerDigits: 1,
 				Grouping:         true,
 			},
-			Texts: []TextElement{{}},
 			CurrencySymbol: CurrencySymbol{
 				Language: "en",
 				Country:  "GB",
 				Symbol:   "£",
 			},
+		},
+		CurrencyStyle{
+			Name:           "__GBP_STYLE",
+			Volatile:       "true",
+			Language:       "en",
+			Country:        "GB",
+			TextProperties: &TextProperties{Color: "#ff0000"},
+			Texts: []TextElement{
+				{"−"},
+			},
+			Number: NumberFormat{
+				DecimalPlaces:    2,
+				MinDecimalPlaces: 2,
+				MinIntegerDigits: 1,
+				Grouping:         true,
+			},
+			CurrencySymbol: CurrencySymbol{
+				Language: "en",
+				Country:  "GB",
+				Symbol:   "£",
+			},
+			StyleMap: &StyleMap{Condition: "value()>=0", ApplyStyleName: "___GBP_STYLE"},
 		},
 		NumberStyle{
 			Name: "__PERCENTAGE_STYLE",
@@ -608,8 +671,8 @@ type CurrencyStyle struct {
 	Volatile       string          `xml:"style:volatile,attr,omitempty"`
 	Language       string          `xml:"number:language,attr"`
 	Country        string          `xml:"number:country,attr"`
-	Number         NumberFormat    `xml:"number:number"`
 	Texts          []TextElement   `xml:"number:text"`
+	Number         NumberFormat    `xml:"number:number"`
 	CurrencySymbol CurrencySymbol  `xml:"number:currency-symbol"`
 	TextProperties *TextProperties `xml:"style:text-properties,omitempty"`
 	StyleMap       *StyleMap       `xml:"style:map,omitempty"`
