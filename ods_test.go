@@ -85,6 +85,8 @@ func TestCommonDataTypes(t *testing.T) {
 	givenThoseCells := [][]Cell{
 		{
 			MakeCell("ABBA", "string"),
+			MakeCell("42", "float"),
+			MakeCell("-42", "float"),
 			MakeCell("42.3324", "float"),
 			MakeCell("-42.3324", "float"),
 			MakeCell("2022-02-02", "date"),
@@ -103,6 +105,8 @@ func TestCommonDataTypes(t *testing.T) {
 	expectedThisCsv["en_US.UTF-8"] = [][]string{
 		{
 			"ABBA",
+			"42.00",
+			"−42.00",
 			"42.33",
 			"−42.33",
 			"2022-02-02",
@@ -119,6 +123,8 @@ func TestCommonDataTypes(t *testing.T) {
 	expectedThisCsv["de_DE.UTF-8"] = [][]string{
 		{
 			"ABBA",
+			"42,00",
+			"−42,00",
 			"42,33",
 			"−42,33",
 			"2022-02-02",
