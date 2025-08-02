@@ -95,8 +95,11 @@ func TestCommonDataTypes(t *testing.T) {
 			MakeCell("2.22", "currency"),
 			MakeCell("-2.22", "currency"),
 			MakeCell("2.22", "currency-usd"),
+			MakeCell("-2.22", "currency-usd"),
 			MakeCell("2.22", "currency-gbp"),
+			MakeCell("-2.22", "currency-gbp"),
 			MakeCell("2.22", "currency-eur"),
+			MakeCell("-2.22", "currency-eur"),
 			MakeCell("0.4223", "percentage"),
 		},
 	}
@@ -113,10 +116,13 @@ func TestCommonDataTypes(t *testing.T) {
 			"2022-02-02",
 			"07:03:00 PM",
 			"2.22€",
-			"-2.22€",
+			"−2.22€",
 			"2.22$",
+			"−2.22$",
 			"2.22£",
+			"−2.22£",
 			"2.22€",
+			"−2.22€",
 			"42.23%",
 		},
 	}
@@ -131,10 +137,13 @@ func TestCommonDataTypes(t *testing.T) {
 			"2022-02-02",
 			"19:03:00",
 			"2.22€",
-			"-2.22€",
+			"−2.22€",
 			"2.22$",
+			"−2.22$",
 			"2.22£",
+			"−2.22£",
 			"2.22€",
+			"−2.22€",
 			"42,23 %",
 		},
 	}
@@ -162,21 +171,21 @@ func TestCurrencyFormatting(t *testing.T) {
 	expectedThisCsv["en_US.UTF-8"] = [][]string{
 		{
 			"2.00€",
-			"-2.00€",
+			"−2.00€",
 			"2.20€",
-			"-2.20€",
+			"−2.20€",
 			"2.22€",
-			"-2.22€",
+			"−2.22€",
 		},
 	}
 	expectedThisCsv["de_DE.UTF-8"] = [][]string{
 		{
 			"2.00€",
-			"-2.00€",
+			"−2.00€",
 			"2.20€",
-			"-2.20€",
+			"−2.20€",
 			"2.22€",
-			"-2.22€",
+			"−2.22€",
 		},
 	}
 
