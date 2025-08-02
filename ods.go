@@ -342,6 +342,7 @@ func createNumberStyles() []interface{} {
 		NumberStyle{
 			Name:           "__FLOAT_STYLE",
 			TextProperties: &TextProperties{Color: "#ff0000"},
+			Text:           "−",
 			NumberElements: []NumberElement{
 				{
 					DecimalPlaces:    "2",
@@ -535,6 +536,7 @@ type NumberStyle struct {
 	Volatile       string          `xml:"style:volatile,attr,omitempty"`
 	Language       string          `xml:"number:language,attr,omitempty"`
 	Country        string          `xml:"number:country,attr,omitempty"`
+	Text           string          `xml:"number:text,omitempty"`
 	TextProperties *TextProperties `xml:"style:text-properties,omitempty"`
 	NumberElements []NumberElement `xml:",any"`
 	Map            *Map            `xml:"style:map,omitempty"`

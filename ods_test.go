@@ -86,6 +86,7 @@ func TestCommonDataTypes(t *testing.T) {
 		{
 			MakeCell("ABBA", "string"),
 			MakeCell("42.3324", "float"),
+			MakeCell("-42.3324", "float"),
 			MakeCell("2022-02-02", "date"),
 			MakeCell("2.2.2022", "date"),
 			MakeCell("19:03:00", "time"),
@@ -103,6 +104,7 @@ func TestCommonDataTypes(t *testing.T) {
 		{
 			"ABBA",
 			"42.33",
+			"−42.33",
 			"2022-02-02",
 			"2022-02-02",
 			"07:03:00 PM",
@@ -118,6 +120,7 @@ func TestCommonDataTypes(t *testing.T) {
 		{
 			"ABBA",
 			"42,33",
+			"−42,33",
 			"2022-02-02",
 			"2022-02-02",
 			"19:03:00",
