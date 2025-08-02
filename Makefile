@@ -14,4 +14,4 @@ test:
 	go test -v ./...
 
 clean:
-	rm -rf integration-test-*
+	rm -rf _it-*

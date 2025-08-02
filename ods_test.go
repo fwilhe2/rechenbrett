@@ -25,7 +25,7 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv m
 	lang := os.Getenv("LANG")
 	spreadsheet := MakeSpreadsheet(inputCells)
 
-	tempDir, err := os.MkdirTemp(".", fmt.Sprintf("integration-test-%s-%s-", testName, lang))
+	tempDir, err := os.MkdirTemp(".", fmt.Sprintf("_it-%s-%s-%s-", testName, format, lang))
 	if err != nil {
 		panic(err)
 	}
