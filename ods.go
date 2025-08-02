@@ -378,6 +378,7 @@ func createNumberStyles() []interface{} {
 			Country:  "DE",
 			Number: NumberFormat{
 				DecimalPlaces:    2,
+				MinDecimalPlaces: 2,
 				MinIntegerDigits: 1,
 				Grouping:         true,
 			},
@@ -395,6 +396,7 @@ func createNumberStyles() []interface{} {
 			Country:  "US",
 			Number: NumberFormat{
 				DecimalPlaces:    2,
+				MinDecimalPlaces: 2,
 				MinIntegerDigits: 1,
 				Grouping:         true,
 			},
@@ -412,6 +414,7 @@ func createNumberStyles() []interface{} {
 			Country:  "GB",
 			Number: NumberFormat{
 				DecimalPlaces:    2,
+				MinDecimalPlaces: 2,
 				MinIntegerDigits: 1,
 				Grouping:         true,
 			},
