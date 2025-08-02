@@ -137,6 +137,47 @@ func TestCommonDataTypes(t *testing.T) {
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 }
 
+func TestCurrencyFormatting(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeCell("2", "currency"),
+			MakeCell("-2", "currency"),
+			MakeCell("2.2", "currency"),
+			MakeCell("-2.2", "currency"),
+			MakeCell("2.22", "currency"),
+			MakeCell("-2.22", "currency"),
+		},
+	}
+
+	expectedThisCsv := make(map[string][][]string)
+	expectedThisCsv["en_US.UTF-8"] = [][]string{
+		{
+			"2.00€",
+			"-2.00€",
+			"2.20€",
+			"-2.20€",
+			"2.22€",
+			"-2.22€",
+		},
+	}
+	expectedThisCsv["de_DE.UTF-8"] = [][]string{
+		{
+			"2.00€",
+			"-2.00€",
+			"2.20€",
+			"-2.20€",
+			"2.22€",
+			"-2.22€",
+		},
+	}
+
+	err := integrationTest("currency-formatting", "ods", givenThoseCells, expectedThisCsv)
+	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+
+	err = integrationTest("currency-formatting", "fods", givenThoseCells, expectedThisCsv)
+	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+}
+
 func TestFormula(t *testing.T) {
 	givenThoseCells := [][]Cell{
 		{
