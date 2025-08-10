@@ -607,8 +607,7 @@ type NumberStyle struct {
 }
 
 type TextProperties struct {
-	XMLName xml.Name `xml:"style:text-properties"`
-	Color   string   `xml:"fo:color,attr,omitempty"`
+	Color string `xml:"fo:color,attr,omitempty"`
 }
 
 type NumberElement struct {
