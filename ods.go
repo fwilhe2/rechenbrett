@@ -93,6 +93,49 @@ func toA1(row, col int) string {
 	return fmt.Sprintf("$%s$%d", columnToLetters(col), row)
 }
 
+func Eval(spreadsheet Spreadsheet) [][]string {
+	output := [][]string{}
+
+	// for _,r  := range spreadsheet.NamedExpressions.NamedRanges {
+	// 	r.
+	// }
+
+	for _, c := range spreadsheet.Tables[0].Rows[0].Cells {
+		line := []string{}
+		if c.Formula != "" {
+			// todo: eval formula
+			println(c.Formula)
+			line = append(line, c.Formula)
+		} else {
+
+			switch c.CalcExtType {
+			case "currency":
+			line = append(line, fmt.Sprintf("%s eur", c.Value))
+
+			case "date":
+			line = append(line, fmt.Sprintf("%s", c.DateValue))
+
+
+			case "time":
+			line = append(line, fmt.Sprintf("%s", c.TimeValue))
+
+
+
+
+			default:
+			line = append(line, c.Value)
+
+			}
+			println(c.Value)
+
+		}
+		output = append(output, line)
+	}
+
+
+	return output
+}
+
 func MakeFlatOds(spreadsheet Spreadsheet) string {
 	fods := FlatOds{
 		XMLNSOffice:    "urn:oasis:names:tc:opendocument:xmlns:office:1.0",

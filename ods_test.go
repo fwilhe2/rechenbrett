@@ -332,3 +332,38 @@ func TestUnitDateParse(t *testing.T) {
 		assert(t, dateString((candidate)) == expected, fmt.Sprintf("Expected %s to be formatted as %s", candidate, expected))
 	}
 }
+
+
+func TestFoo(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeRangeCell("42.3324", "float", "InputA"),
+			MakeRangeCell("23", "float", "InputB"),
+			MakeCell("InputA+InputB", "formula"),
+			MakeCell("SUM(InputA:InputB)", "formula"),
+			MakeCell("(InputA+InputB)/2", "formula"),
+			MakeCell("AVERAGE(InputA:InputB)", "formula"),
+			MakeCell("ABBA", "string"),
+			MakeCell("42", "float"),
+			MakeCell("-42", "float"),
+			MakeCell("42.3324", "float"),
+			MakeCell("-42.3324", "float"),
+			MakeCell("2022-02-02", "date"),
+			MakeCell("2.2.2022", "date"),
+			MakeCell("19:03:00", "time"),
+			MakeCell("2.22", "currency"),
+			MakeCell("-2.22", "currency"),
+			MakeCell("2.22", "currency-usd"),
+			MakeCell("-2.22", "currency-usd"),
+			MakeCell("2.22", "currency-gbp"),
+			MakeCell("-2.22", "currency-gbp"),
+			MakeCell("2.22", "currency-eur"),
+			MakeCell("-2.22", "currency-eur"),
+			MakeCell("0.4223", "percentage"),
+		},
+	}
+
+	sheet := MakeSpreadsheet(givenThoseCells)
+	x := Eval(sheet)
+	println(x)
+}
