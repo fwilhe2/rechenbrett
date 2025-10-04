@@ -6,6 +6,7 @@ package ods
 
 import (
 	"encoding/csv"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"log"
@@ -331,4 +332,15 @@ func TestUnitDateParse(t *testing.T) {
 	for _, candidate := range testDates {
 		assert(t, dateString((candidate)) == expected, fmt.Sprintf("Expected %s to be formatted as %s", candidate, expected))
 	}
+}
+
+func TestUnitCell(t *testing.T) {
+	givenThisCell := Cell{Value: "2.33", ValueType: "float", StyleName: "FLOAT_STYLE"}
+	expectThisXml := `<table:table-cell office:value-type="float" office:value="2.33" table:style-name="FLOAT_STYLE"></table:table-cell>`
+
+	actualBytes, err := xml.Marshal(givenThisCell)
+	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+	actual := string(actualBytes)
+
+	assert(t, actual == expectThisXml, fmt.Sprintf("Expected %s to be formatted as %s", actual, expectThisXml))
 }
