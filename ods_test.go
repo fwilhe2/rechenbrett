@@ -342,5 +342,19 @@ func TestUnitCell(t *testing.T) {
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 	actual := string(actualBytes)
 
-	assert(t, actual == expectThisXml, fmt.Sprintf("Expected %s to be formatted as %s", actual, expectThisXml))
+	assert(t, actual == expectThisXml, fmt.Sprintf("Expected:\n%s\nGot:\n%s\n", actual, expectThisXml))
 }
+
+func TestUnitRow(t *testing.T) {
+	cell1 := Cell{Value: "2"}
+	cell2 := Cell{Value: "a"}
+	givenThisRow := Row{Cells: []Cell{cell1, cell2} }
+	expectThisXml := `<table:table-row><table:table-cell office:value="2"></table:table-cell><table:table-cell office:value="a"></table:table-cell></table:table-row>`
+
+	actualBytes, err := xml.Marshal(givenThisRow)
+	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+	actual := string(actualBytes)
+
+	assert(t, actual == expectThisXml, fmt.Sprintf("Expected:\n%s\nGot:\n%s\n", actual, expectThisXml))
+}
+
