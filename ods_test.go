@@ -51,7 +51,7 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv m
 	loCmd := exec.Command("bash", "-c", cmd)
 	_, err = loCmd.Output()
 	if err != nil {
-		panic(err)
+		t.Fatalf("Command failed with error: %v", err)
 	}
 
 	actualCsvBytes, _ := os.ReadFile(fmt.Sprintf("%s/%s-%s.csv", tempDir, testName, lang))
