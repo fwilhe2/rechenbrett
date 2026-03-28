@@ -22,7 +22,7 @@ func assert(t *testing.T, condition bool, message string) {
 	}
 }
 
-func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv map[string][][]string) error {
+func integrationTest(t *testing.T, testName, format string, inputCells [][]Cell, expectedCsv map[string][][]string) error {
 	lang := os.Getenv("LANG")
 	spreadsheet := MakeSpreadsheet(inputCells)
 
@@ -149,10 +149,10 @@ func TestCommonDataTypes(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("common-data-types", "ods", givenThoseCells, expectedThisCsv)
+	err := integrationTest(t, "common-data-types", "ods", givenThoseCells, expectedThisCsv)
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 
-	err = integrationTest("common-data-types", "fods", givenThoseCells, expectedThisCsv)
+	err = integrationTest(t, "common-data-types", "fods", givenThoseCells, expectedThisCsv)
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 }
 
@@ -190,10 +190,10 @@ func TestCurrencyFormatting(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("currency-formatting", "ods", givenThoseCells, expectedThisCsv)
+	err := integrationTest(t, "currency-formatting", "ods", givenThoseCells, expectedThisCsv)
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 
-	err = integrationTest("currency-formatting", "fods", givenThoseCells, expectedThisCsv)
+	err = integrationTest(t, "currency-formatting", "fods", givenThoseCells, expectedThisCsv)
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 }
 
@@ -231,10 +231,10 @@ func TestFormula(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("formula", "ods", givenThoseCells, expectedThisCsv)
+	err := integrationTest(t, "formula", "ods", givenThoseCells, expectedThisCsv)
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 
-	err = integrationTest("formula", "fods", givenThoseCells, expectedThisCsv)
+	err = integrationTest(t, "formula", "fods", givenThoseCells, expectedThisCsv)
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 }
 
@@ -272,10 +272,10 @@ func TestRanges(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("ranges", "ods", givenThoseCells, expectedThisCsv)
+	err := integrationTest(t, "ranges", "ods", givenThoseCells, expectedThisCsv)
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 
-	err = integrationTest("ranges", "fods", givenThoseCells, expectedThisCsv)
+	err = integrationTest(t, "ranges", "fods", givenThoseCells, expectedThisCsv)
 	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
 }
 
