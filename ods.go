@@ -38,7 +38,14 @@ func MakeSpreadsheet(cells [][]Cell) Spreadsheet {
 
 	r1 := 1
 	c1 := 1
+	maxColumns := 0
 	for _, c := range cells {
+		if len(c) == 0 {
+			c = []Cell{{}}
+		}
+		if len(c) > maxColumns {
+			maxColumns = len(c)
+		}
 		rows = append(rows, Row{Cells: c})
 		for _, cc := range c {
 			if len(cc.Range) > 0 {
@@ -50,11 +57,16 @@ func MakeSpreadsheet(cells [][]Cell) Spreadsheet {
 		r1++
 		c1 = 1
 	}
+	if len(rows) == 0 {
+		rows = []Row{{Cells: []Cell{{}}}}
+		maxColumns = 1
+	}
 
 	tables := []Table{
 		{
-			Name: "Sheet1",
-			Rows: rows,
+			Name:    "Sheet1",
+			Columns: []TableColumn{{Repeated: fmt.Sprintf("%d", maxColumns)}},
+			Rows:    rows,
 		},
 	}
 
@@ -101,8 +113,7 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 		XMLNSStyle:     "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
 		XMLNSFo:        "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:    "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
-		XMLNSCalcext:   "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0",
-		OfficeVersion:  "1.3",
+		OfficeVersion:  "1.4",
 		OfficeMimetype: "application/vnd.oasis.opendocument.spreadsheet",
 		AutomaticStyles: AutomaticStyles{
 			NumberStyles: createNumberStyles(),
@@ -119,11 +130,12 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 
 func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	manifest := Manifest{
-		XMLNS: "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
+		Version: "1.4",
+		XMLNS:   "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
 		Entries: []FileEntry{
 			{
 				FullPath:  "/",
-				Version:   "1.3",
+				Version:   "1.4",
 				MediaType: "application/vnd.oasis.opendocument.spreadsheet",
 			},
 			{
@@ -144,8 +156,7 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 		XMLNSStyle:    "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
 		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
-		XMLNSCalcext:  "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0",
-		OfficeVersion: "1.3",
+		OfficeVersion: "1.4",
 		AutomaticStyles: AutomaticStyles{
 			NumberStyles: createNumberStyles(),
 			Styles:       createStyles(),
@@ -163,8 +174,7 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
 		XMLNSSvg:      "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
-		XMLNSCalcext:  "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0",
-		OfficeVersion: "1.3",
+		OfficeVersion: "1.4",
 		AutomaticStyles: AutomaticStyles{
 			NumberStyles: createNumberStyles(),
 			Styles:       createStyles(),
@@ -281,21 +291,16 @@ func createCell(cellData CellData) Cell {
 	switch cellData.ValueType {
 	case "string":
 		cell.Text = cellData.Value
-		cell.CalcExtType = "string"
 	case "float":
-		cell.CalcExtType = "float"
 		cell.StyleName = "FLOAT_STYLE"
 		cell.Value = cellData.Value
 	case "date":
-		cell.CalcExtType = "date"
 		cell.StyleName = "DATE_STYLE"
 		cell.DateValue = dateString(cellData.Value)
 	case "time":
-		cell.CalcExtType = "time"
 		cell.StyleName = "TIME_STYLE"
 		cell.TimeValue = timeString(cellData.Value)
 	case "percentage":
-		cell.CalcExtType = "percentage"
 		cell.StyleName = "PERCENTAGE_STYLE"
 		cell.Value = cellData.Value
 	case "formula":
@@ -304,18 +309,18 @@ func createCell(cellData CellData) Cell {
 	default:
 		if strings.HasPrefix(cellData.ValueType, "currency") {
 			if strings.HasSuffix(strings.ToLower(cellData.ValueType), "usd") {
-				cell.CalcExtType = "currency"
+				cell.ValueType = "currency"
 				cell.StyleName = "USD_STYLE"
 				cell.Value = cellData.Value
 				cell.Currency = "USD"
 			} else if strings.HasSuffix(strings.ToLower(cellData.ValueType), "gbp") {
-				cell.CalcExtType = "currency"
+				cell.ValueType = "currency"
 				cell.StyleName = "GBP_STYLE"
 				cell.Value = cellData.Value
 				cell.Currency = "GBP"
 			} else {
 				// Assuming Euro as the default, just because it is the default for me :shrug:
-				cell.CalcExtType = "currency"
+				cell.ValueType = "currency"
 				cell.StyleName = "EUR_STYLE"
 				cell.Value = cellData.Value
 				cell.Currency = "EUR"
@@ -357,20 +362,20 @@ func createNumberStyles() []interface{} {
 			Name: "__DATE_STYLE",
 			Parts: []interface{}{
 				NumberElementDateYear{XMLName: xml.Name{Local: "number:year"}, Style: "long"},
-				TextElement{Content: "-"},
+				NumberText{Content: "-"},
 				NumberElementDateMonth{XMLName: xml.Name{Local: "number:month"}, Style: "long"},
-				TextElement{Content: "-"},
+				NumberText{Content: "-"},
 				NumberElementDateDay{XMLName: xml.Name{Local: "number:day"}, Style: "long"},
 			},
 		},
-		NumberStyle{
+		TimeStyle{
 			Name: "__TIME_STYLE",
-			NumberElements: []NumberElement{
-				{XMLName: xml.Name{Local: "number:hours"}, DecimalPlaces: "long"},
-				{XMLName: xml.Name{Local: "number:text"}, DecimalPlaces: ":"},
-				{XMLName: xml.Name{Local: "number:minutes"}, DecimalPlaces: "long"},
-				{XMLName: xml.Name{Local: "number:text"}, DecimalPlaces: ":"},
-				{XMLName: xml.Name{Local: "number:seconds"}, DecimalPlaces: "long"},
+			Parts: []interface{}{
+				NumberElementTime{XMLName: xml.Name{Local: "number:hours"}, Style: "long"},
+				NumberText{Content: ":"},
+				NumberElementTime{XMLName: xml.Name{Local: "number:minutes"}, Style: "long"},
+				NumberText{Content: ":"},
+				NumberElementTime{XMLName: xml.Name{Local: "number:seconds"}, Style: "long"},
 			},
 		},
 		CurrencyStyle{
@@ -396,8 +401,8 @@ func createNumberStyles() []interface{} {
 			Language:       "en",
 			Country:        "DE",
 			TextProperties: &TextProperties{Color: "#ff0000"},
-			Texts: []TextElement{
-				{"−"},
+			Texts: []NumberText{
+				{Content: "−"},
 			},
 			Number: NumberFormat{
 				DecimalPlaces:    2,
@@ -435,8 +440,8 @@ func createNumberStyles() []interface{} {
 			Language:       "en",
 			Country:        "US",
 			TextProperties: &TextProperties{Color: "#ff0000"},
-			Texts: []TextElement{
-				{"−"},
+			Texts: []NumberText{
+				{Content: "−"},
 			},
 			Number: NumberFormat{
 				DecimalPlaces:    2,
@@ -474,8 +479,8 @@ func createNumberStyles() []interface{} {
 			Language:       "en",
 			Country:        "GB",
 			TextProperties: &TextProperties{Color: "#ff0000"},
-			Texts: []TextElement{
-				{"−"},
+			Texts: []NumberText{
+				{Content: "−"},
 			},
 			Number: NumberFormat{
 				DecimalPlaces:    2,
@@ -490,15 +495,15 @@ func createNumberStyles() []interface{} {
 			},
 			StyleMap: &StyleMap{Condition: "value()>=0", ApplyStyleName: "___GBP_STYLE"},
 		},
-		NumberStyle{
+		PercentageStyle{
 			Name: "__PERCENTAGE_STYLE",
 			NumberElements: []NumberElement{
 				{
 					DecimalPlaces:    "2",
 					MinIntegerDigits: "1",
 				},
-				{XMLName: xml.Name{Local: "number:text"}, DecimalPlaces: "%"},
 			},
+			Text: &NumberText{Content: "%"},
 		},
 	}
 }
@@ -516,17 +521,16 @@ func createStyles() []Style {
 }
 
 type Cell struct {
-	XMLName     xml.Name `xml:"table:table-cell"`
-	Text        string   `xml:"text:p,omitempty"`
-	ValueType   string   `xml:"office:value-type,attr,omitempty"`
-	CalcExtType string   `xml:"calcext:value-type,attr,omitempty"`
-	Value       string   `xml:"office:value,attr,omitempty"`
-	DateValue   string   `xml:"office:date-value,attr,omitempty"`
-	TimeValue   string   `xml:"office:time-value,attr,omitempty"`
-	Currency    string   `xml:"office:currency,attr,omitempty"`
-	StyleName   string   `xml:"table:style-name,attr,omitempty"`
-	Formula     string   `xml:"table:formula,attr,omitempty"`
-	Range       string   `xml:"-"`
+	XMLName   xml.Name `xml:"table:table-cell"`
+	Text      string   `xml:"text:p,omitempty"`
+	ValueType string   `xml:"office:value-type,attr,omitempty"`
+	Value     string   `xml:"office:value,attr,omitempty"`
+	DateValue string   `xml:"office:date-value,attr,omitempty"`
+	TimeValue string   `xml:"office:time-value,attr,omitempty"`
+	Currency  string   `xml:"office:currency,attr,omitempty"`
+	StyleName string   `xml:"table:style-name,attr,omitempty"`
+	Formula   string   `xml:"table:formula,attr,omitempty"`
+	Range     string   `xml:"-"`
 }
 
 type Row struct {
@@ -535,9 +539,15 @@ type Row struct {
 }
 
 type Table struct {
-	XMLName xml.Name `xml:"table:table"`
-	Name    string   `xml:"table:name,attr"`
-	Rows    []Row    `xml:"table:table-row"`
+	XMLName xml.Name      `xml:"table:table"`
+	Name    string        `xml:"table:name,attr"`
+	Columns []TableColumn `xml:"table:table-columns>table:table-column"`
+	Rows    []Row         `xml:"table:table-row"`
+}
+
+type TableColumn struct {
+	XMLName  xml.Name `xml:"table:table-column"`
+	Repeated string   `xml:"table:number-columns-repeated,attr,omitempty"`
 }
 
 type FlatOds struct {
@@ -548,7 +558,6 @@ type FlatOds struct {
 	XMLNSStyle      string          `xml:"xmlns:style,attr"`
 	XMLNSFo         string          `xml:"xmlns:fo,attr"`
 	XMLNSNumber     string          `xml:"xmlns:number,attr"`
-	XMLNSCalcext    string          `xml:"xmlns:calcext,attr"`
 	OfficeVersion   string          `xml:"office:version,attr"`
 	OfficeMimetype  string          `xml:"office:mimetype,attr"`
 	AutomaticStyles AutomaticStyles `xml:"office:automatic-styles"`
@@ -563,7 +572,6 @@ type OfficeDocumentContent struct {
 	XMLNSStyle      string          `xml:"xmlns:style,attr"`
 	XMLNSFo         string          `xml:"xmlns:fo,attr"`
 	XMLNSNumber     string          `xml:"xmlns:number,attr"`
-	XMLNSCalcext    string          `xml:"xmlns:calcext,attr"`
 	OfficeVersion   string          `xml:"office:version,attr"`
 	AutomaticStyles AutomaticStyles `xml:"office:automatic-styles"`
 	Body            Body            `xml:"office:body"`
@@ -578,7 +586,6 @@ type OfficeDocumentStyles struct {
 	XMLNSFo         string          `xml:"xmlns:fo,attr"`
 	XMLNSNumber     string          `xml:"xmlns:number,attr"`
 	XMLNSSvg        string          `xml:"xmlns:svg,attr"`
-	XMLNSCalcext    string          `xml:"xmlns:calcext,attr"`
 	OfficeVersion   string          `xml:"office:version,attr"`
 	AutomaticStyles AutomaticStyles `xml:"office:automatic-styles"`
 }
@@ -590,7 +597,7 @@ type Styles struct {
 
 type AutomaticStyles struct {
 	XMLName      xml.Name      `xml:"office:automatic-styles"`
-	NumberStyles []interface{} `xml:"number:number-style"`
+	NumberStyles []interface{} `xml:",any"`
 	Styles       []Style       `xml:"style:style"`
 }
 
@@ -600,8 +607,8 @@ type NumberStyle struct {
 	Volatile       string          `xml:"style:volatile,attr,omitempty"`
 	Language       string          `xml:"number:language,attr,omitempty"`
 	Country        string          `xml:"number:country,attr,omitempty"`
-	Text           string          `xml:"number:text,omitempty"`
 	TextProperties *TextProperties `xml:"style:text-properties,omitempty"`
+	Text           string          `xml:"number:text,omitempty"`
 	NumberElements []NumberElement `xml:",any"`
 	Map            *Map            `xml:"style:map,omitempty"`
 }
@@ -612,10 +619,10 @@ type TextProperties struct {
 
 type NumberElement struct {
 	XMLName          xml.Name `xml:"number:number"`
-	DecimalPlaces    string   `xml:"number:decimal-places,attr"`
-	MinDecimalPlaces string   `xml:"number:min-decimal-places,attr"`
-	MinIntegerDigits string   `xml:"number:min-integer-digits,attr"`
-	Grouping         string   `xml:"number:grouping,attr"`
+	DecimalPlaces    string   `xml:"number:decimal-places,attr,omitempty"`
+	MinDecimalPlaces string   `xml:"number:min-decimal-places,attr,omitempty"`
+	MinIntegerDigits string   `xml:"number:min-integer-digits,attr,omitempty"`
+	Grouping         string   `xml:"number:grouping,attr,omitempty"`
 	Language         string   `xml:"-"`
 	Country          string   `xml:"-"`
 }
@@ -670,10 +677,10 @@ type CurrencyStyle struct {
 	Volatile       string          `xml:"style:volatile,attr,omitempty"`
 	Language       string          `xml:"number:language,attr"`
 	Country        string          `xml:"number:country,attr"`
-	Texts          []TextElement   `xml:"number:text"`
+	TextProperties *TextProperties `xml:"style:text-properties,omitempty"`
+	Texts          []NumberText    `xml:"number:text"`
 	Number         NumberFormat    `xml:"number:number"`
 	CurrencySymbol CurrencySymbol  `xml:"number:currency-symbol"`
-	TextProperties *TextProperties `xml:"style:text-properties,omitempty"`
 	StyleMap       *StyleMap       `xml:"style:map,omitempty"`
 }
 
@@ -684,8 +691,9 @@ type NumberFormat struct {
 	Grouping         bool `xml:"number:grouping,attr"`
 }
 
-type TextElement struct {
-	Content string `xml:",chardata"`
+type NumberText struct {
+	XMLName xml.Name `xml:"number:text"`
+	Content string   `xml:",chardata"`
 }
 
 type CurrencySymbol struct {
@@ -702,7 +710,21 @@ type StyleMap struct {
 type DateStyle struct {
 	XMLName xml.Name      `xml:"number:date-style"`
 	Name    string        `xml:"style:name,attr"`
-	Parts   []interface{} `xml:"number:text"`
+	Parts   []interface{} `xml:",any"`
+}
+
+type TimeStyle struct {
+	XMLName xml.Name      `xml:"number:time-style"`
+	Name    string        `xml:"style:name,attr"`
+	Parts   []interface{} `xml:",any"`
+}
+
+type PercentageStyle struct {
+	XMLName        xml.Name        `xml:"number:percentage-style"`
+	Name           string          `xml:"style:name,attr"`
+	TextProperties *TextProperties `xml:"style:text-properties,omitempty"`
+	NumberElements []NumberElement `xml:",any"`
+	Text           *NumberText     `xml:"number:text,omitempty"`
 }
 
 type NumberElementDateYear struct {
@@ -718,6 +740,11 @@ type NumberElementDateMonth struct {
 type NumberElementDateDay struct {
 	XMLName xml.Name `xml:"number:day"`
 	Style   string   `xml:"number:style,attr"`
+}
+
+type NumberElementTime struct {
+	XMLName xml.Name
+	Style   string `xml:"number:style,attr"`
 }
 
 type NamedExpressions struct {

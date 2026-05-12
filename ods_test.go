@@ -5,6 +5,8 @@
 package ods
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/csv"
 	"encoding/xml"
 	"fmt"
@@ -20,6 +22,55 @@ func assert(t *testing.T, condition bool, message string) {
 	if !condition {
 		t.Error(message)
 	}
+}
+
+func validateOdfSchema(t *testing.T, xmlContent []byte) {
+	t.Helper()
+
+	xmlFile, err := os.CreateTemp(t.TempDir(), "odf-*.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := xmlFile.Write(xmlContent); err != nil {
+		t.Fatal(err)
+	}
+	if err := xmlFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("xmllint", "--noout", "--relaxng", "OpenDocument-v1.4-schema.rng", xmlFile.Name())
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("generated XML is not ODF 1.4 schema compliant:\n%s", string(output))
+	}
+}
+
+func readOdsEntry(t *testing.T, ods *bytes.Buffer, name string) []byte {
+	t.Helper()
+
+	reader, err := zip.NewReader(bytes.NewReader(ods.Bytes()), int64(ods.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, file := range reader.File {
+		if file.Name != name {
+			continue
+		}
+		entry, err := file.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer entry.Close()
+		content, err := io.ReadAll(entry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return content
+	}
+
+	t.Fatalf("expected %s in generated ODS", name)
+	return nil
 }
 
 func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv map[string][][]string) error {
@@ -80,6 +131,35 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv m
 		}
 	}
 	return nil
+}
+
+func TestSchemaComplianceFlatOds(t *testing.T) {
+	spreadsheet := MakeSpreadsheet([][]Cell{
+		{
+			MakeCell("ABBA", "string"),
+			MakeCell("42.3324", "float"),
+			MakeCell("2022-02-02", "date"),
+			MakeCell("19:03:00", "time"),
+			MakeCell("2.22", "currency-usd"),
+			MakeCell("0.4223", "percentage"),
+			MakeCell("SUM(B1:B1)", "formula"),
+		},
+	})
+
+	validateOdfSchema(t, []byte(MakeFlatOds(spreadsheet)))
+}
+
+func TestSchemaComplianceOdsEntries(t *testing.T) {
+	spreadsheet := MakeSpreadsheet([][]Cell{
+		{
+			MakeRangeCell("42.3324", "float", "InputA"),
+			MakeCell("InputA*2", "formula"),
+		},
+	})
+
+	ods := MakeOds(spreadsheet)
+	validateOdfSchema(t, readOdsEntry(t, ods, "content.xml"))
+	validateOdfSchema(t, readOdsEntry(t, ods, "styles.xml"))
 }
 
 func TestCommonDataTypes(t *testing.T) {
@@ -348,7 +428,7 @@ func TestUnitCell(t *testing.T) {
 func TestUnitRow(t *testing.T) {
 	cell1 := Cell{Value: "2"}
 	cell2 := Cell{Value: "a"}
-	givenThisRow := Row{Cells: []Cell{cell1, cell2} }
+	givenThisRow := Row{Cells: []Cell{cell1, cell2}}
 	expectThisXml := `<table:table-row><table:table-cell office:value="2"></table:table-cell><table:table-cell office:value="a"></table:table-cell></table:table-row>`
 
 	actualBytes, err := xml.Marshal(givenThisRow)
@@ -357,4 +437,3 @@ func TestUnitRow(t *testing.T) {
 
 	assert(t, actual == expectThisXml, fmt.Sprintf("Expected:\n%s\nGot:\n%s\n", actual, expectThisXml))
 }
-
