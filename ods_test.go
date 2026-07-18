@@ -9,7 +9,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"strings"

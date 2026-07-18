@@ -44,7 +44,7 @@ func validateAgainstSchema(t *testing.T, name, xmlContent string) {
 }
 
 // schemaTestSpreadsheet covers every cell type the library can produce.
-func schemaTestSpreadsheet() Spreadsheet {
+func schemaTestSpreadsheet() (Spreadsheet, error) {
 	return MakeSpreadsheet([][]Cell{
 		{
 			MakeCell("ABBA", "string"),
@@ -63,7 +63,15 @@ func schemaTestSpreadsheet() Spreadsheet {
 }
 
 func TestOdsPartsMatchOdfSchema(t *testing.T) {
-	buff := MakeOds(schemaTestSpreadsheet())
+	spreadsheet, err := schemaTestSpreadsheet()
+	if err != nil {
+		t.Fatalf("schemaTestSpreadsheet: %v", err)
+	}
+
+	buff, err := MakeOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeOds: %v", err)
+	}
 
 	reader, err := zip.NewReader(bytes.NewReader(buff.Bytes()), int64(buff.Len()))
 	if err != nil {
@@ -98,5 +106,15 @@ func TestOdsPartsMatchOdfSchema(t *testing.T) {
 }
 
 func TestFlatOdsMatchesOdfSchema(t *testing.T) {
-	validateAgainstSchema(t, "flat.fods", MakeFlatOds(schemaTestSpreadsheet()))
+	spreadsheet, err := schemaTestSpreadsheet()
+	if err != nil {
+		t.Fatalf("schemaTestSpreadsheet: %v", err)
+	}
+
+	flatOds, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
+
+	validateAgainstSchema(t, "flat.fods", flatOds)
 }
