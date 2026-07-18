@@ -5,9 +5,10 @@
 // Package ods builds OpenDocument spreadsheet documents, both as zipped
 // packages (.ods) and as flat XML documents (.fods).
 //
-// Cells are created with [MakeCell] or [MakeRangeCell], arranged in rows,
-// and combined into a [Spreadsheet] with [MakeSpreadsheet]. The spreadsheet
-// is then serialized with [MakeOds], [WriteOds], or [MakeFlatOds].
+// Cells are created with [MakeCell], [MakeRangeCell], or [MakeStyledCell],
+// arranged in rows, and combined into a [Spreadsheet] with
+// [MakeSpreadsheet]. The spreadsheet is then serialized with [MakeOds],
+// [WriteOds], or [MakeFlatOds].
 package ods
 
 import (
@@ -64,6 +65,51 @@ func MakeRangeCell(value, valueType, rangeName string) Cell {
 	})
 }
 
+// CellStyle customizes the visual appearance of a cell. Colors are hex
+// strings such as "#ff0000". Border, if set, is an ODF fo:border shorthand
+// value (e.g. "0.5pt solid #000000") applied to all four sides of the cell.
+// Zero-value fields are left unset.
+type CellStyle struct {
+	BackgroundColor string
+	FontColor       string
+	Bold            bool
+	Italic          bool
+	Border          string
+}
+
+// MakeStyledCell creates a cell like [MakeCell], additionally applying style
+// to its appearance. Cells created with an identical style share a single
+// generated style definition.
+func MakeStyledCell(value, valueType string, style CellStyle) Cell {
+	return createCell(cellData{
+		Value:     value,
+		ValueType: valueType,
+		Style:     &style,
+	})
+}
+
+// Color constants for use with [CellStyle.BackgroundColor] and
+// [CellStyle.FontColor], taken from the palette at https://clrs.cc/.
+const (
+	ColorNavy    = "#001f3f"
+	ColorBlue    = "#0074d9"
+	ColorAqua    = "#7fdbff"
+	ColorTeal    = "#39cccc"
+	ColorPurple  = "#b10dc9"
+	ColorFuchsia = "#f012be"
+	ColorMaroon  = "#85144b"
+	ColorRed     = "#ff4136"
+	ColorOrange  = "#ff851b"
+	ColorYellow  = "#ffdc00"
+	ColorOlive   = "#3d9970"
+	ColorGreen   = "#2ecc40"
+	ColorLime    = "#01ff70"
+	ColorBlack   = "#111111"
+	ColorGray    = "#aaaaaa"
+	ColorSilver  = "#dddddd"
+	ColorWhite   = "#ffffff"
+)
+
 // MakeSpreadsheet arranges the given rows of cells into a spreadsheet with a
 // single sheet named "Sheet1".
 //
@@ -81,6 +127,9 @@ func MakeSpreadsheetWithName(name string, cells [][]Cell) (Spreadsheet, error) {
 	rangeAddresses := map[string]string{}
 	rangeNames := []string{}
 
+	customStyleNames := map[customStyleKey]string{}
+	var customStyles []cellStyle
+
 	maxCols := 1
 	for rowIdx, c := range cells {
 		rows = append(rows, row{Cells: c})
@@ -89,15 +138,24 @@ func MakeSpreadsheetWithName(name string, cells [][]Cell) (Spreadsheet, error) {
 			if cc.err != nil {
 				errs = append(errs, fmt.Errorf("row %d, column %d: %w", rowIdx+1, colIdx+1, cc.err))
 			}
-			if cc.rangeName == "" {
-				continue
+			if cc.rangeName != "" {
+				if _, exists := rangeAddresses[cc.rangeName]; exists {
+					errs = append(errs, fmt.Errorf("row %d, column %d: duplicate range name %q", rowIdx+1, colIdx+1, cc.rangeName))
+				} else {
+					rangeAddresses[cc.rangeName] = fmt.Sprintf("$%s.%s", name, toA1(rowIdx+1, colIdx+1))
+					rangeNames = append(rangeNames, cc.rangeName)
+				}
 			}
-			if _, exists := rangeAddresses[cc.rangeName]; exists {
-				errs = append(errs, fmt.Errorf("row %d, column %d: duplicate range name %q", rowIdx+1, colIdx+1, cc.rangeName))
-				continue
+			if cc.style != nil {
+				key := customStyleKey{CellStyle: *cc.style, dataStyleName: dataStyleNameFor(cc.StyleName)}
+				styleName, exists := customStyleNames[key]
+				if !exists {
+					styleName = fmt.Sprintf("CUSTOM_STYLE_%d", len(customStyleNames)+1)
+					customStyleNames[key] = styleName
+					customStyles = append(customStyles, buildCustomCellStyle(styleName, key.dataStyleName, *cc.style))
+				}
+				c[colIdx].StyleName = styleName
 			}
-			rangeAddresses[cc.rangeName] = fmt.Sprintf("$%s.%s", name, toA1(rowIdx+1, colIdx+1))
-			rangeNames = append(rangeNames, cc.rangeName)
 		}
 	}
 	if len(errs) > 0 {
@@ -124,7 +182,62 @@ func MakeSpreadsheetWithName(name string, cells [][]Cell) (Spreadsheet, error) {
 			},
 		},
 		NamedExpressions: namedExpressions{NamedRanges: namedRanges},
+		customStyles:     customStyles,
 	}, nil
+}
+
+// customStyleKey identifies a distinct generated cell style, so cells
+// sharing the same CellStyle and base data style reuse one style definition.
+type customStyleKey struct {
+	CellStyle
+	dataStyleName string
+}
+
+// dataStyleNameFor maps a preset style name assigned by createCell (e.g.
+// FLOAT_STYLE) to the number-format style it references, so custom styles
+// keep the same numeric formatting. Value types without a preset style
+// (string, time, percentage, formula) return "".
+func dataStyleNameFor(presetStyleName string) string {
+	switch presetStyleName {
+	case "FLOAT_STYLE":
+		return "FLOAT_DATA_STYLE"
+	case "DATE_STYLE":
+		return "DATE_DATA_STYLE"
+	case "EUR_STYLE":
+		return "EUR_DATA_STYLE"
+	case "USD_STYLE":
+		return "USD_DATA_STYLE"
+	case "GBP_STYLE":
+		return "GBP_DATA_STYLE"
+	default:
+		return ""
+	}
+}
+
+func buildCustomCellStyle(name, dataStyleName string, style CellStyle) cellStyle {
+	cs := cellStyle{
+		Name:            name,
+		Family:          "table-cell",
+		ParentStyleName: "Default",
+		DataStyleName:   dataStyleName,
+	}
+	if style.BackgroundColor != "" || style.Border != "" {
+		cs.TableCellProperties = &tableCellProperties{
+			BackgroundColor: style.BackgroundColor,
+			Border:          style.Border,
+		}
+	}
+	if style.FontColor != "" || style.Bold || style.Italic {
+		tp := &textProperties{Color: style.FontColor}
+		if style.Bold {
+			tp.FontWeight = "bold"
+		}
+		if style.Italic {
+			tp.FontStyle = "italic"
+		}
+		cs.TextProperties = tp
+	}
+	return cs
 }
 
 // Converts a column number to its Excel-style letter representation
@@ -163,7 +276,7 @@ func MakeFlatOds(spreadsheet Spreadsheet) (string, error) {
 		Meta:           officeMeta{Generator: generator},
 		AutomaticStyles: automaticStyles{
 			NumberStyles: createNumberStyles(),
-			Styles:       createStyles(),
+			Styles:       append(createStyles(), spreadsheet.customStyles...),
 		},
 		Body: documentBody{
 			Spreadsheet: spreadsheet,
@@ -223,7 +336,7 @@ func WriteOds(w io.Writer, spreadsheet Spreadsheet) error {
 		OfficeVersion: odfVersion,
 		AutomaticStyles: automaticStyles{
 			NumberStyles: createNumberStyles(),
-			Styles:       createStyles(),
+			Styles:       append(createStyles(), spreadsheet.customStyles...),
 		},
 		Body: documentBody{
 			Spreadsheet: spreadsheet,
@@ -356,6 +469,7 @@ func createCell(data cellData) Cell {
 	cell := Cell{
 		ValueType: data.ValueType,
 		rangeName: data.Range,
+		style:     data.Style,
 	}
 
 	switch data.ValueType {
@@ -505,6 +619,7 @@ type Cell struct {
 	Formula   string   `xml:"table:formula,attr,omitempty"`
 
 	rangeName string
+	style     *CellStyle
 	err       error
 }
 
@@ -515,6 +630,11 @@ type Spreadsheet struct {
 	XMLName          xml.Name         `xml:"office:spreadsheet"`
 	Tables           []table          `xml:"table:table"`
 	NamedExpressions namedExpressions `xml:"table:named-expressions"`
+
+	// customStyles holds the cell styles generated for cells created with
+	// [MakeStyledCell]. It is emitted into office:automatic-styles by
+	// [MakeFlatOds] and [WriteOds].
+	customStyles []cellStyle
 }
 
 // cellData is the raw input for a cell before validation.
@@ -522,6 +642,7 @@ type cellData struct {
 	Value     string
 	ValueType string
 	Range     string
+	Style     *CellStyle
 }
 
 type row struct {
@@ -617,7 +738,9 @@ type numberStyle struct {
 }
 
 type textProperties struct {
-	Color string `xml:"fo:color,attr,omitempty"`
+	Color      string `xml:"fo:color,attr,omitempty"`
+	FontWeight string `xml:"fo:font-weight,attr,omitempty"`
+	FontStyle  string `xml:"fo:font-style,attr,omitempty"`
 }
 
 type numberElement struct {
@@ -635,11 +758,20 @@ type styleMap struct {
 }
 
 type cellStyle struct {
-	XMLName         xml.Name `xml:"style:style"`
-	Name            string   `xml:"style:name,attr"`
-	Family          string   `xml:"style:family,attr"`
-	ParentStyleName string   `xml:"style:parent-style-name,attr"`
-	DataStyleName   string   `xml:"style:data-style-name,attr"`
+	XMLName             xml.Name             `xml:"style:style"`
+	Name                string               `xml:"style:name,attr"`
+	Family              string               `xml:"style:family,attr"`
+	ParentStyleName     string               `xml:"style:parent-style-name,attr"`
+	DataStyleName       string               `xml:"style:data-style-name,attr,omitempty"`
+	TableCellProperties *tableCellProperties `xml:"style:table-cell-properties,omitempty"`
+	TextProperties      *textProperties      `xml:"style:text-properties,omitempty"`
+}
+
+// tableCellProperties holds the visual cell properties generated for
+// [CellStyle] (background color and border).
+type tableCellProperties struct {
+	BackgroundColor string `xml:"fo:background-color,attr,omitempty"`
+	Border          string `xml:"fo:border,attr,omitempty"`
 }
 
 type documentBody struct {
