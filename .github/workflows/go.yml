@@ -37,6 +37,11 @@ jobs:
 
       - run: libreoffice --headless --version
 
+      - name: Install jing for RELAX NG schema validation tests
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends jing
+
       - name: Build
         run: go build -v ./...
 
