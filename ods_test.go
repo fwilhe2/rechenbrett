@@ -31,20 +31,17 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv m
 		panic(err)
 	}
 
+	filename := fmt.Sprintf("%s/%s-%s.%s", tempDir, testName, lang, format)
 	if format == "ods" {
 		buff := MakeOds(spreadsheet)
-
-		archive, err := os.Create(fmt.Sprintf("%s/%s-%s.%s", tempDir, testName, lang, format))
-		if err != nil {
+		if err := os.WriteFile(filename, buff.Bytes(), 0o644); err != nil {
 			panic(err)
 		}
-
-		archive.Write(buff.Bytes())
-
-		archive.Close()
 	} else {
 		actual := MakeFlatOds(spreadsheet)
-		os.WriteFile(fmt.Sprintf("%s/%s-%s.%s", tempDir, testName, lang, format), []byte(actual), 0o644)
+		if err := os.WriteFile(filename, []byte(actual), 0o644); err != nil {
+			panic(err)
+		}
 	}
 
 	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" %s/%s-%s.%s --outdir %s", tempDir, testName, lang, format, tempDir)
