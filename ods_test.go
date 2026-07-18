@@ -70,7 +70,7 @@ func integrationTest(t *testing.T, testName, format string, inputCells [][]Cell,
 	}
 
 	loCmd := exec.Command("libreoffice", "--headless",
-		"--convert-to", `csv:"Text - txt - csv (StarCalc)":"44,34,76,1,,1031,true,true"`,
+		"--convert-to", `csv:Text - txt - csv (StarCalc):44,34,76,1,,1031,true,true`,
 		filename, "--outdir", tempDir)
 	output, err := loCmd.CombinedOutput()
 	if err != nil {
