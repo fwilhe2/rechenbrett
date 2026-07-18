@@ -27,6 +27,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The job runs in a container, so the checkout is owned by a different
+      # UID than the container user and git refuses to operate on it. Building
+      # a main package (cmd/showcase) makes go embed VCS info, which runs git.
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: date
         run: |
           date

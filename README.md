@@ -109,6 +109,10 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
 
 `Cell`, `Spreadsheet`, and `CellStyle` are the only exported types beyond the functions above. `Cell` and `Spreadsheet` fields are exported solely for XML marshaling and aren't meant to be constructed or read directly — build values through the functions instead.
 
+## Showcase
+
+`make showcase` (or `go run ./cmd/showcase`) generates example `.ods` and `.fods` documents into `output/` (gitignored) that exercise rechenbrett's features — every value type, formulas and named ranges, and custom cell styles with the `Color*` palette — for opening in a spreadsheet application or spot-checking output. It runs in well under a second and needs no LibreOffice install, unlike the test suite (`make test`), which drives LibreOffice to verify rendered values.
+
 ## Related
 
 [json-to-ods](https://github.com/fwilhe2/mkods) is a simple go wrapper for rechenbrett to make it usable as a cli tool

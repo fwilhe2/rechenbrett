@@ -13,5 +13,8 @@ build:
 test:
 	go test -v ./...
 
+showcase:
+	go run ./cmd/showcase
+
 clean:
 	rm -rf _it-*
