@@ -17,45 +17,73 @@ import (
 )
 
 func assert(t *testing.T, condition bool, message string) {
+	t.Helper()
 	if !condition {
 		t.Error(message)
 	}
 }
 
-func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv map[string][][]string) error {
+// integrationTest renders the cells to a file, has LibreOffice convert it to
+// CSV, and compares the result with the locale-specific expectation.
+//
+// The temp dirs are deliberately created inside the repository and not
+// cleaned up: the odfvalidator step in CI scans them and validates the
+// generated ods files. Do not replace them with t.TempDir().
+//
+// These tests must not run in parallel: LibreOffice instances share a single
+// user profile.
+func integrationTest(t *testing.T, testName, format string, inputCells [][]Cell, expectedCsv map[string][][]string) {
+	t.Helper()
+
 	lang := os.Getenv("LANG")
-	spreadsheet := MakeSpreadsheet(inputCells)
+	expected, ok := expectedCsv[lang]
+	if !ok {
+		t.Skipf("no expectations for LANG=%q, set LANG to one of the supported locales", lang)
+	}
+
+	spreadsheet, err := MakeSpreadsheet(inputCells)
+	if err != nil {
+		t.Fatalf("MakeSpreadsheet: %v", err)
+	}
 
 	tempDir, err := os.MkdirTemp(".", fmt.Sprintf("_it-%s-%s-%s-", testName, format, lang))
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	filename := fmt.Sprintf("%s/%s-%s.%s", tempDir, testName, lang, format)
 	if format == "ods" {
-		buff := MakeOds(spreadsheet)
+		buff, err := MakeOds(spreadsheet)
+		if err != nil {
+			t.Fatalf("MakeOds: %v", err)
+		}
 		if err := os.WriteFile(filename, buff.Bytes(), 0o644); err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 	} else {
-		actual := MakeFlatOds(spreadsheet)
+		actual, err := MakeFlatOds(spreadsheet)
+		if err != nil {
+			t.Fatalf("MakeFlatOds: %v", err)
+		}
 		if err := os.WriteFile(filename, []byte(actual), 0o644); err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 	}
 
-	cmd := fmt.Sprintf("libreoffice --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":\"44,34,76,1,,1031,true,true\" %s/%s-%s.%s --outdir %s", tempDir, testName, lang, format, tempDir)
-	loCmd := exec.Command("bash", "-c", cmd)
+	loCmd := exec.Command("libreoffice", "--headless",
+		"--convert-to", `csv:"Text - txt - csv (StarCalc)":"44,34,76,1,,1031,true,true"`,
+		filename, "--outdir", tempDir)
 	output, err := loCmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("[%s %s] libreoffice conversion failed: %w\n%s", testName, lang, err, output)
+		t.Fatalf("[%s %s] libreoffice conversion failed: %v\n%s", testName, lang, err, output)
 	}
 
-	actualCsvBytes, _ := os.ReadFile(fmt.Sprintf("%s/%s-%s.csv", tempDir, testName, lang))
+	actualCsvBytes, err := os.ReadFile(fmt.Sprintf("%s/%s-%s.csv", tempDir, testName, lang))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	actualCsv := string(actualCsvBytes)
-
-	r := csv.NewReader(strings.NewReader(actualCsv))
+	r := csv.NewReader(strings.NewReader(string(actualCsvBytes)))
 
 	line := 0
 	for {
@@ -64,19 +92,16 @@ func integrationTest(testName, format string, inputCells [][]Cell, expectedCsv m
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			t.Fatal(err)
 		}
-
-		fmt.Println(record)
-		fmt.Println(expectedCsv)
 
 		for i, v := range record {
-			if v != expectedCsv[lang][line][i] {
-				return fmt.Errorf("[%s %s] Failed test, value is: '%s', expected: '%s'", testName, lang, v, expectedCsv[lang][line][i])
+			if v != expected[line][i] {
+				t.Errorf("[%s %s] line %d, column %d: got %q, expected %q", testName, lang, line+1, i+1, v, expected[line][i])
 			}
 		}
+		line++
 	}
-	return nil
 }
 
 func TestCommonDataTypes(t *testing.T) {
@@ -146,11 +171,8 @@ func TestCommonDataTypes(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("common-data-types", "ods", givenThoseCells, expectedThisCsv)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
-
-	err = integrationTest("common-data-types", "fods", givenThoseCells, expectedThisCsv)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+	integrationTest(t, "common-data-types", "ods", givenThoseCells, expectedThisCsv)
+	integrationTest(t, "common-data-types", "fods", givenThoseCells, expectedThisCsv)
 }
 
 func TestCurrencyFormatting(t *testing.T) {
@@ -187,11 +209,8 @@ func TestCurrencyFormatting(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("currency-formatting", "ods", givenThoseCells, expectedThisCsv)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
-
-	err = integrationTest("currency-formatting", "fods", givenThoseCells, expectedThisCsv)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+	integrationTest(t, "currency-formatting", "ods", givenThoseCells, expectedThisCsv)
+	integrationTest(t, "currency-formatting", "fods", givenThoseCells, expectedThisCsv)
 }
 
 func TestFormula(t *testing.T) {
@@ -228,11 +247,8 @@ func TestFormula(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("formula", "ods", givenThoseCells, expectedThisCsv)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
-
-	err = integrationTest("formula", "fods", givenThoseCells, expectedThisCsv)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+	integrationTest(t, "formula", "ods", givenThoseCells, expectedThisCsv)
+	integrationTest(t, "formula", "fods", givenThoseCells, expectedThisCsv)
 }
 
 func TestRanges(t *testing.T) {
@@ -269,11 +285,8 @@ func TestRanges(t *testing.T) {
 		},
 	}
 
-	err := integrationTest("ranges", "ods", givenThoseCells, expectedThisCsv)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
-
-	err = integrationTest("ranges", "fods", givenThoseCells, expectedThisCsv)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+	integrationTest(t, "ranges", "ods", givenThoseCells, expectedThisCsv)
+	integrationTest(t, "ranges", "fods", givenThoseCells, expectedThisCsv)
 }
 
 func TestUnitRanges(t *testing.T) {
@@ -294,9 +307,15 @@ func TestUnitRanges(t *testing.T) {
 		},
 	}
 
-	spreadsheet := MakeSpreadsheet(givenThoseCells)
+	spreadsheet, err := MakeSpreadsheet(givenThoseCells)
+	if err != nil {
+		t.Fatalf("MakeSpreadsheet: %v", err)
+	}
 
-	actual := MakeFlatOds(spreadsheet)
+	actual, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
 
 	assert(t, strings.Contains(actual, "<table:named-range table:name=\"InputA\" table:base-cell-address=\"$Sheet1.$A$1\" table:cell-range-address=\"$Sheet1.$A$1\"></table:named-range>"), "Expected input A in spreadsheet")
 	assert(t, strings.Contains(actual, "<table:named-range table:name=\"InputF\" table:base-cell-address=\"$Sheet1.$B$5\" table:cell-range-address=\"$Sheet1.$B$5\"></table:named-range>"), "Expected input F in spreadsheet")
@@ -311,7 +330,11 @@ func TestUnitTimeParse(t *testing.T) {
 	}
 
 	for _, candidate := range testTimes {
-		assert(t, timeString(candidate) == expected, fmt.Sprintf("Expected %s to be parsed as %s", candidate, expected))
+		actual, err := timeString(candidate)
+		if err != nil {
+			t.Errorf("timeString(%q): %v", candidate, err)
+		}
+		assert(t, actual == expected, fmt.Sprintf("Expected %s to be parsed as %s, got %s", candidate, expected, actual))
 	}
 }
 
@@ -327,31 +350,79 @@ func TestUnitDateParse(t *testing.T) {
 	}
 
 	for _, candidate := range testDates {
-		assert(t, dateString((candidate)) == expected, fmt.Sprintf("Expected %s to be formatted as %s", candidate, expected))
+		actual, err := dateString(candidate)
+		if err != nil {
+			t.Errorf("dateString(%q): %v", candidate, err)
+		}
+		assert(t, actual == expected, fmt.Sprintf("Expected %s to be formatted as %s, got %s", candidate, expected, actual))
 	}
 }
 
+func TestUnitInvalidInput(t *testing.T) {
+	invalidCells := map[string]Cell{
+		"unknown value type":  MakeCell("42", "number"),
+		"unknown currency":    MakeCell("42", "currency-chf"),
+		"malformed date":      MakeCell("02.02.22", "date"),
+		"malformed time":      MakeCell("25 o'clock", "time"),
+		"non-numeric float":   MakeCell("fourtytwo", "float"),
+		"non-numeric percent": MakeCell("42 %", "percentage"),
+	}
+
+	for name, cell := range invalidCells {
+		t.Run(name, func(t *testing.T) {
+			_, err := MakeSpreadsheet([][]Cell{{cell}})
+			if err == nil {
+				t.Errorf("expected an error for %s", name)
+			}
+		})
+	}
+
+	t.Run("duplicate range name", func(t *testing.T) {
+		_, err := MakeSpreadsheet([][]Cell{{
+			MakeRangeCell("1", "float", "Input"),
+			MakeRangeCell("2", "float", "Input"),
+		}})
+		if err == nil || !strings.Contains(err.Error(), "duplicate range name") {
+			t.Errorf("expected duplicate range name error, got: %v", err)
+		}
+	})
+
+	t.Run("all errors are reported", func(t *testing.T) {
+		_, err := MakeSpreadsheet([][]Cell{{
+			MakeCell("x", "float"),
+			MakeCell("y", "date"),
+		}})
+		if err == nil || !strings.Contains(err.Error(), "float") || !strings.Contains(err.Error(), "date") {
+			t.Errorf("expected both cell errors to be reported, got: %v", err)
+		}
+	})
+}
+
 func TestUnitCell(t *testing.T) {
-	givenThisCell := Cell{Value: "2.33", ValueType: "float", StyleName: "FLOAT_STYLE"}
+	givenThisCell := MakeCell("2.33", "float")
 	expectThisXml := `<table:table-cell office:value-type="float" office:value="2.33" table:style-name="FLOAT_STYLE"></table:table-cell>`
 
 	actualBytes, err := xml.Marshal(givenThisCell)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
 	actual := string(actualBytes)
 
-	assert(t, actual == expectThisXml, fmt.Sprintf("Expected:\n%s\nGot:\n%s\n", actual, expectThisXml))
+	assert(t, actual == expectThisXml, fmt.Sprintf("Expected:\n%s\nGot:\n%s\n", expectThisXml, actual))
 }
 
 func TestUnitRow(t *testing.T) {
 	cell1 := Cell{Value: "2"}
 	cell2 := Cell{Value: "a"}
-	givenThisRow := Row{Cells: []Cell{cell1, cell2} }
+	givenThisRow := row{Cells: []Cell{cell1, cell2}}
 	expectThisXml := `<table:table-row><table:table-cell office:value="2"></table:table-cell><table:table-cell office:value="a"></table:table-cell></table:table-row>`
 
 	actualBytes, err := xml.Marshal(givenThisRow)
-	assert(t, err == nil, fmt.Sprintf("err: %v\n", err))
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
 	actual := string(actualBytes)
 
-	assert(t, actual == expectThisXml, fmt.Sprintf("Expected:\n%s\nGot:\n%s\n", actual, expectThisXml))
+	assert(t, actual == expectThisXml, fmt.Sprintf("Expected:\n%s\nGot:\n%s\n", expectThisXml, actual))
 }
 
