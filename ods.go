@@ -19,6 +19,9 @@ import (
 // generator identifies this library in the document metadata (meta:generator).
 const generator = "github.com/fwilhe2/rechenbrett"
 
+// odfVersion is the OpenDocument format version of the produced documents.
+const odfVersion = "1.4"
+
 func MakeCell(value, valueType string) Cell {
 	return createCell(CellData{
 		Value:     value,
@@ -113,7 +116,7 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 		XMLNSFo:        "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:    "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
 		XMLNSMeta:      "urn:oasis:names:tc:opendocument:xmlns:meta:1.0",
-		OfficeVersion:  "1.3",
+		OfficeVersion:  odfVersion,
 		OfficeMimetype: "application/vnd.oasis.opendocument.spreadsheet",
 		Meta:           Meta{Generator: generator},
 		AutomaticStyles: AutomaticStyles{
@@ -131,12 +134,12 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 
 func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	manifest := Manifest{
-		Version: "1.3",
+		Version: odfVersion,
 		XMLNS:   "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
 		Entries: []FileEntry{
 			{
 				FullPath:  "/",
-				Version:   "1.3",
+				Version:   odfVersion,
 				MediaType: "application/vnd.oasis.opendocument.spreadsheet",
 			},
 			{
@@ -161,7 +164,7 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 		XMLNSStyle:    "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
 		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
-		OfficeVersion: "1.3",
+		OfficeVersion: odfVersion,
 		AutomaticStyles: AutomaticStyles{
 			NumberStyles: createNumberStyles(),
 			Styles:       createStyles(),
@@ -179,7 +182,7 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
 		XMLNSSvg:      "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
-		OfficeVersion: "1.3",
+		OfficeVersion: odfVersion,
 		AutomaticStyles: AutomaticStyles{
 			NumberStyles: createNumberStyles(),
 			Styles:       createStyles(),
@@ -189,7 +192,7 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	metaXml := OfficeDocumentMeta{
 		XMLNSOffice:   "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
 		XMLNSMeta:     "urn:oasis:names:tc:opendocument:xmlns:meta:1.0",
-		OfficeVersion: "1.3",
+		OfficeVersion: odfVersion,
 		Meta:          Meta{Generator: generator},
 	}
 

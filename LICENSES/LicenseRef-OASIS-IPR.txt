@@ -1,0 +1,28 @@
+Copyright (c) OASIS Open 2025. All Rights Reserved.
+
+This license applies to the RELAX NG schema of the OASIS Standard "Open
+Document Format for Office Applications (OpenDocument) Version 1.4",
+which is redistributed here verbatim.
+
+Source: https://docs.oasis-open.org/office/OpenDocument/v1.4/os/schemas/
+OASIS IPR Policy: https://www.oasis-open.org/policies-guidelines/ipr/
+TC IPR Statement: https://www.oasis-open.org/committees/office/ipr.php
+
+The copyright notice of the specification states:
+
+This document and translations of it may be copied and furnished to
+others, and derivative works that comment on or otherwise explain it or
+assist in its implementation may be prepared, copied, published, and
+distributed, in whole or in part, without restriction of any kind,
+provided that the above copyright notice and this section are included
+on all such copies and derivative works. However, this document itself
+may not be modified in any way, including by removing the copyright
+notice or references to OASIS, except as needed for the purpose of
+developing any document or deliverable produced by an OASIS Technical
+Committee (in which case the rules applicable to copyrights, as set
+forth in the OASIS IPR Policy, must be followed) or as required to
+translate it into languages other than English.
+
+This specification is provided under the RF on Limited Terms Mode of
+the OASIS IPR Policy, the mode chosen when the Technical Committee was
+established.
