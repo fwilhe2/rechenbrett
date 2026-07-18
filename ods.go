@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"log"
 	"regexp"
@@ -119,7 +120,8 @@ func MakeFlatOds(spreadsheet Spreadsheet) string {
 
 func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 	manifest := Manifest{
-		XMLNS: "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
+		Version: "1.3",
+		XMLNS:   "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0",
 		Entries: []FileEntry{
 			{
 				FullPath:  "/",
@@ -190,15 +192,23 @@ func MakeOds(spreadsheet Spreadsheet) *bytes.Buffer {
 
 	zipWriter := zip.NewWriter(buf)
 
+	// The mimetype entry must be stored uncompressed with its size and CRC in the
+	// local file header (no data descriptor), or LibreOffice >= 26.2 refuses to
+	// load the file. CreateRaw writes the header as given, unlike CreateHeader,
+	// which always streams with a data descriptor.
+	mimetype := []byte("application/vnd.oasis.opendocument.spreadsheet")
 	mimetypeHeader := &zip.FileHeader{
-		Name:   "mimetype",
-		Method: zip.Store, // IMPORTANT: Use zip.Store for no compression.
+		Name:               "mimetype",
+		Method:             zip.Store, // IMPORTANT: Use zip.Store for no compression.
+		CRC32:              crc32.ChecksumIEEE(mimetype),
+		CompressedSize64:   uint64(len(mimetype)),
+		UncompressedSize64: uint64(len(mimetype)),
 	}
-	writer, err := zipWriter.CreateHeader(mimetypeHeader)
+	writer, err := zipWriter.CreateRaw(mimetypeHeader)
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = io.WriteString(writer, "application/vnd.oasis.opendocument.spreadsheet")
+	_, err = writer.Write(mimetype)
 	if err != nil {
 		log.Fatal(err)
 	}
