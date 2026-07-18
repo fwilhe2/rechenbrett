@@ -78,7 +78,7 @@ func main() {
 
 ## API surface
 
-Cells are created with `MakeCell` or `MakeRangeCell`, arranged into rows, combined into a `Spreadsheet` with `MakeSpreadsheet`, and serialized with `MakeOds`, `WriteOds`, or `MakeFlatOds`.
+Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arranged into rows, combined into a `Spreadsheet` with `MakeSpreadsheet`, and serialized with `MakeOds`, `WriteOds`, or `MakeFlatOds`.
 
 - `MakeCell(value, valueType string) Cell` — creates a cell holding `value` interpreted as `valueType`. Supported value types:
   - `"string"`
@@ -93,6 +93,10 @@ Cells are created with `MakeCell` or `MakeRangeCell`, arranged into rows, combin
 
 - `MakeRangeCell(value, valueType, rangeName string) Cell` — like `MakeCell`, and additionally names the cell's position as `rangeName` so formulas in other cells can refer to it by name. Each range name may be used for only one cell.
 
+- `MakeStyledCell(value, valueType string, style CellStyle) Cell` — like `MakeCell`, and additionally applies `style` to the cell's appearance. `CellStyle` sets `BackgroundColor` and `FontColor` (hex strings, e.g. `"#ff0000"`), `Bold`/`Italic`, and `Border` (an ODF `fo:border` shorthand value, e.g. `"0.5pt solid #000000"`, applied to all four sides). Cells created with an identical style share a single generated style definition.
+
+  `Color*` constants (`ColorNavy`, `ColorBlue`, `ColorAqua`, `ColorTeal`, `ColorPurple`, `ColorFuchsia`, `ColorMaroon`, `ColorRed`, `ColorOrange`, `ColorYellow`, `ColorOlive`, `ColorGreen`, `ColorLime`, `ColorBlack`, `ColorGray`, `ColorSilver`, `ColorWhite`), taken from the palette at [clrs.cc](https://clrs.cc/), are available for use as `BackgroundColor`/`FontColor` values.
+
 - `MakeSpreadsheet(cells [][]Cell) (Spreadsheet, error)` — arranges the given rows of cells into a spreadsheet with a single sheet named `Sheet1`. Reports all invalid cells (bad value types, unparseable dates/times/numbers) and duplicate range names together as a single joined error.
 
 - `MakeSpreadsheetWithName(name string, cells [][]Cell) (Spreadsheet, error)` — like `MakeSpreadsheet`, with a custom sheet name.
@@ -103,7 +107,7 @@ Cells are created with `MakeCell` or `MakeRangeCell`, arranged into rows, combin
 
 - `MakeFlatOds(spreadsheet Spreadsheet) (string, error)` — serializes the spreadsheet as a flat OpenDocument XML document (`.fods`). There is no `WriteFods` counterpart to `WriteOds`: the flat document is built with `xml.MarshalIndent`, which has no streaming variant, so the full document is always materialized in memory before `MakeFlatOds` returns it as a string — a `Write` variant would offer no benefit over calling `MakeFlatOds` and writing the result yourself.
 
-`Cell` and `Spreadsheet` are the only exported types beyond the functions above; their fields are exported solely for XML marshaling and aren't meant to be constructed or read directly — build values through the functions instead.
+`Cell`, `Spreadsheet`, and `CellStyle` are the only exported types beyond the functions above. `Cell` and `Spreadsheet` fields are exported solely for XML marshaling and aren't meant to be constructed or read directly — build values through the functions instead.
 
 ## Related
 

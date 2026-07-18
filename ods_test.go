@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -395,6 +396,103 @@ func TestUnitInvalidInput(t *testing.T) {
 			t.Errorf("expected both cell errors to be reported, got: %v", err)
 		}
 	})
+}
+
+func TestStyledCell(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeStyledCell("Navy", "string", CellStyle{BackgroundColor: ColorNavy}),
+			MakeStyledCell("Bold", "string", CellStyle{Bold: true}),
+		},
+	}
+
+	expectedThisCsv := make(map[string][][]string)
+	expectedThisCsv["en_US.UTF-8"] = [][]string{{"Navy", "Bold"}}
+	expectedThisCsv["de_DE.UTF-8"] = [][]string{{"Navy", "Bold"}}
+
+	integrationTest(t, "styled-cell", "ods", givenThoseCells, expectedThisCsv)
+	integrationTest(t, "styled-cell", "fods", givenThoseCells, expectedThisCsv)
+}
+
+func TestUnitColorPalette(t *testing.T) {
+	palette := map[string]string{
+		"ColorNavy":    ColorNavy,
+		"ColorBlue":    ColorBlue,
+		"ColorAqua":    ColorAqua,
+		"ColorTeal":    ColorTeal,
+		"ColorPurple":  ColorPurple,
+		"ColorFuchsia": ColorFuchsia,
+		"ColorMaroon":  ColorMaroon,
+		"ColorRed":     ColorRed,
+		"ColorOrange":  ColorOrange,
+		"ColorYellow":  ColorYellow,
+		"ColorOlive":   ColorOlive,
+		"ColorGreen":   ColorGreen,
+		"ColorLime":    ColorLime,
+		"ColorBlack":   ColorBlack,
+		"ColorGray":    ColorGray,
+		"ColorSilver":  ColorSilver,
+		"ColorWhite":   ColorWhite,
+	}
+
+	hexColor := regexp.MustCompile(`^#[0-9a-f]{6}$`)
+	seen := map[string]string{}
+	for name, value := range palette {
+		assert(t, hexColor.MatchString(value), fmt.Sprintf("%s = %q is not a lowercase #rrggbb hex color", name, value))
+		if other, exists := seen[value]; exists {
+			t.Errorf("%s and %s both have value %q, expected the palette to have distinct colors", name, other, value)
+		}
+		seen[value] = name
+	}
+}
+
+func TestUnitStyledCellGeneratesStyle(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeStyledCell("Navy", "string", CellStyle{BackgroundColor: "#001f3f"}),
+			MakeStyledCell("42", "float", CellStyle{Bold: true, FontColor: "#ffffff", Border: "0.5pt solid #000000"}),
+		},
+	}
+
+	spreadsheet, err := MakeSpreadsheet(givenThoseCells)
+	if err != nil {
+		t.Fatalf("MakeSpreadsheet: %v", err)
+	}
+
+	actual, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
+
+	assert(t, strings.Contains(actual, `table:style-name="CUSTOM_STYLE_1"`), "expected first styled cell to reference CUSTOM_STYLE_1")
+	assert(t, strings.Contains(actual, `table:style-name="CUSTOM_STYLE_2"`), "expected second styled cell to reference CUSTOM_STYLE_2")
+	assert(t, strings.Contains(actual, `style:name="CUSTOM_STYLE_1" style:family="table-cell" style:parent-style-name="Default"`), "expected CUSTOM_STYLE_1 style definition")
+	assert(t, strings.Contains(actual, `fo:background-color="#001f3f"`), "expected background color in generated style")
+	assert(t, strings.Contains(actual, `style:name="CUSTOM_STYLE_2" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="FLOAT_DATA_STYLE"`), "expected the float cell's custom style to keep the float number format")
+	assert(t, strings.Contains(actual, `fo:font-weight="bold"`), "expected bold font weight in generated style")
+	assert(t, strings.Contains(actual, `fo:border="0.5pt solid #000000"`), "expected border in generated style")
+}
+
+func TestUnitStyledCellDeduplicates(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{
+			MakeStyledCell("A", "string", CellStyle{BackgroundColor: "#ff0000"}),
+			MakeStyledCell("B", "string", CellStyle{BackgroundColor: "#ff0000"}),
+		},
+	}
+
+	spreadsheet, err := MakeSpreadsheet(givenThoseCells)
+	if err != nil {
+		t.Fatalf("MakeSpreadsheet: %v", err)
+	}
+
+	actual, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
+
+	assert(t, strings.Count(actual, `style:name="CUSTOM_STYLE_1"`) == 1, "expected only one style definition for two identically styled cells")
+	assert(t, strings.Count(actual, `table:style-name="CUSTOM_STYLE_1"`) == 2, "expected both cells to reference the same generated style")
 }
 
 func TestUnitCell(t *testing.T) {

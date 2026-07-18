@@ -66,6 +66,10 @@ var schemaTestCases = map[string][][]Cell{
 	"currency gbp":           {{MakeCell("2.22", "currency-gbp")}},
 	"currency gbp negative":  {{MakeCell("-2.22", "currency-gbp")}},
 	"named range":            {{MakeRangeCell("42", "float", "answer")}},
+	"styled cell": {{
+		MakeStyledCell("Navy", "string", CellStyle{BackgroundColor: "#001f3f"}),
+		MakeStyledCell("42.33", "float", CellStyle{Bold: true, Italic: true, FontColor: "#ffffff", Border: "0.5pt solid #000000"}),
+	}},
 	"all types combined": {
 		{
 			MakeCell("ABBA", "string"),
