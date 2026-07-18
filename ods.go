@@ -20,7 +20,6 @@ import (
 	"io"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 // generator identifies this library in the document metadata (meta:generator).
