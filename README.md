@@ -46,22 +46,64 @@ func main() {
 		},
 	}
 
-	spreadsheet := rb.MakeSpreadsheet(inputCells)
+	spreadsheet, err := rb.MakeSpreadsheet(inputCells)
+	if err != nil {
+		panic(err)
+	}
 
-	// create ods file
-	buff := rb.MakeOds(spreadsheet)
+	// create ods file: prefer WriteOds over MakeOds when writing to a file or
+	// other io.Writer, since it streams the zip archive directly instead of
+	// building it in a buffer first
 	archive, err := os.Create("myfile.ods")
 	if err != nil {
 		panic(err)
 	}
-	archive.Write(buff.Bytes())
-	archive.Close()
+	defer archive.Close()
+	if err := rb.WriteOds(archive, spreadsheet); err != nil {
+		panic(err)
+	}
 
-	// create fods file
-	flatOdsString := rb.MakeFlatOds(spreadsheet)
-	os.WriteFile("myfile.fods", []byte(flatOdsString), 0o644)
+	// create fods file: MakeFlatOds always builds the whole document in
+	// memory (xml.MarshalIndent has no streaming variant to wrap), so there
+	// is no WriteFods equivalent to WriteOds — just write out the string
+	flatOdsString, err := rb.MakeFlatOds(spreadsheet)
+	if err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile("myfile.fods", []byte(flatOdsString), 0o644); err != nil {
+		panic(err)
+	}
 }
 ```
+
+## API surface
+
+Cells are created with `MakeCell` or `MakeRangeCell`, arranged into rows, combined into a `Spreadsheet` with `MakeSpreadsheet`, and serialized with `MakeOds`, `WriteOds`, or `MakeFlatOds`.
+
+- `MakeCell(value, valueType string) Cell` — creates a cell holding `value` interpreted as `valueType`. Supported value types:
+  - `"string"`
+  - `"float"`
+  - `"date"` (ISO `YYYY-MM-DD`, German `DD.MM.YYYY`, or US `MM/DD/YYYY`)
+  - `"time"` (`HH:MM` or `HH:MM:SS`)
+  - `"percentage"` (a fraction, e.g. `"0.42"` for 42 %)
+  - `"formula"`
+  - `"currency"` (defaults to EUR), `"currency-eur"`, `"currency-usd"`, `"currency-gbp"`
+
+  Invalid values or value types are not reported here; they surface as an error from `MakeSpreadsheet`.
+
+- `MakeRangeCell(value, valueType, rangeName string) Cell` — like `MakeCell`, and additionally names the cell's position as `rangeName` so formulas in other cells can refer to it by name. Each range name may be used for only one cell.
+
+- `MakeSpreadsheet(cells [][]Cell) (Spreadsheet, error)` — arranges the given rows of cells into a spreadsheet with a single sheet named `Sheet1`. Reports all invalid cells (bad value types, unparseable dates/times/numbers) and duplicate range names together as a single joined error.
+
+- `MakeSpreadsheetWithName(name string, cells [][]Cell) (Spreadsheet, error)` — like `MakeSpreadsheet`, with a custom sheet name.
+
+- `MakeOds(spreadsheet Spreadsheet) (*bytes.Buffer, error)` — serializes the spreadsheet as a zipped OpenDocument package (`.ods`). Implemented as `WriteOds` into a `bytes.Buffer`; prefer calling `WriteOds` directly when you already have an `io.Writer` (a file, an HTTP response, ...) to avoid the extra buffer copy.
+
+- `WriteOds(w io.Writer, spreadsheet Spreadsheet) error` — writes the zipped OpenDocument package (`.ods`) directly to `w`. This is the recommended entry point for producing `.ods` output: it streams archive entries straight to `w` via `archive/zip`, rather than materializing the whole archive in memory first.
+
+- `MakeFlatOds(spreadsheet Spreadsheet) (string, error)` — serializes the spreadsheet as a flat OpenDocument XML document (`.fods`). There is no `WriteFods` counterpart to `WriteOds`: the flat document is built with `xml.MarshalIndent`, which has no streaming variant, so the full document is always materialized in memory before `MakeFlatOds` returns it as a string — a `Write` variant would offer no benefit over calling `MakeFlatOds` and writing the result yourself.
+
+`Cell` and `Spreadsheet` are the only exported types beyond the functions above; their fields are exported solely for XML marshaling and aren't meant to be constructed or read directly — build values through the functions instead.
 
 ## Related
 
