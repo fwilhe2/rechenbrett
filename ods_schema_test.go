@@ -77,8 +77,10 @@ func TestOdsPartsMatchOdfSchema(t *testing.T) {
 			t.Fatal(err)
 		}
 		content, err := io.ReadAll(rc)
-		rc.Close()
 		if err != nil {
+			t.Fatal(err)
+		}
+		if err := rc.Close(); err != nil {
 			t.Fatal(err)
 		}
 		parts[f.Name] = string(content)
