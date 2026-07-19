@@ -118,6 +118,7 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
       AutoFilter: true,        // filter dropdowns over header + body (not the totals row)
       BandedRows: true,        // alternate the body-row fill
       Style:      rb.TableStyleBlue, // or TableStyleGray, TableStyleGreen
+      StructuredRefs: true,    // name each column so formulas can reference it
       Totals: []rb.Total{      // one aggregate per column; omitted/TotalNone -> empty cell
           {Func: rb.TotalNone},
           {Func: rb.TotalSum},
@@ -126,6 +127,8 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
   ```
 
   `TotalFunc` values are `TotalNone`, `TotalSum`, `TotalAverage`, `TotalCount`, `TotalMin`, and `TotalMax`, each emitted as the corresponding `SUBTOTAL` function so the aggregate excludes rows hidden by the AutoFilter. The header/banded/totals fills reuse the same generated-style deduplication as `MakeStyledCell`.
+
+  With `StructuredRefs: true` (which requires `Header`), each column also gets a named range spanning its body rows, named after the column header (sanitized to a valid identifier — e.g. `Unit Price` → `Unit_Price`). Formulas can then refer to columns by name, and the totals row uses those names (`SUBTOTAL(9;Price)`) instead of raw cell addresses.
 
 - `MakeOds(spreadsheet Spreadsheet) (*bytes.Buffer, error)` — serializes the spreadsheet as a zipped OpenDocument package (`.ods`). Implemented as `WriteOds` into a `bytes.Buffer`; prefer calling `WriteOds` directly when you already have an `io.Writer` (a file, an HTTP response, ...) to avoid the extra buffer copy.
 

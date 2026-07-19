@@ -180,11 +180,12 @@ func tableDocument() rb.Spreadsheet {
 	}
 
 	spreadsheet, err := rb.MakeTable(cells, rb.TableOptions{
-		Name:       "Products",
-		Header:     true,
-		AutoFilter: true,
-		BandedRows: true,
-		Style:      rb.TableStyleBlue,
+		Name:           "Products",
+		Header:         true,
+		AutoFilter:     true,
+		BandedRows:     true,
+		StructuredRefs: true,
+		Style:          rb.TableStyleBlue,
 		Totals: []rb.Total{
 			{Func: rb.TotalNone},
 			{Func: rb.TotalNone},

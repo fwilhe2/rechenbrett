@@ -22,6 +22,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -313,6 +314,12 @@ type TableOptions struct {
 	// per column. Columns beyond len(Totals), and entries with TotalNone, get
 	// an empty (styled) cell.
 	Totals []Total
+	// StructuredRefs generates a named range per column, named after the
+	// (sanitized) header cell and spanning that column's body rows, so
+	// formulas can refer to columns by name (e.g. SUBTOTAL(9;unit_price)).
+	// Requires Header. When set, totals cells reference these column names
+	// instead of raw cell addresses.
+	StructuredRefs bool
 	// Style selects the color theme. Defaults to TableStyleBlue.
 	Style TableStyle
 }
@@ -323,10 +330,18 @@ type TableOptions struct {
 // AutoFilter dropdown buttons — the closest ODF approximation of Excel's
 // "Format as Table".
 //
+// With opts.StructuredRefs it also emits a named range per column (spanning
+// the column's body rows, named after the header), so callers can reference
+// columns by name.
+//
 // It reports invalid cells (bad value types, unparseable dates, times, or
 // numbers) and duplicate range names the same way [MakeSpreadsheet] does. The
 // caller's cells are not modified.
 func MakeTable(cells [][]Cell, opts TableOptions) (Spreadsheet, error) {
+	if opts.StructuredRefs && !opts.Header {
+		return Spreadsheet{}, errors.New("MakeTable: StructuredRefs requires Header to name the columns")
+	}
+
 	name := opts.Name
 	if name == "" {
 		name = "Table1"
@@ -368,20 +383,34 @@ func MakeTable(cells [][]Cell, opts TableOptions) (Spreadsheet, error) {
 	}
 
 	// firstDataRow/lastDataRow are the 1-based sheet rows spanned by the body,
-	// used for both the totals SUBTOTAL ranges and the AutoFilter range.
+	// used for the column named ranges, the totals SUBTOTAL ranges, and the
+	// AutoFilter range.
 	firstDataRow := bodyStart + 1
 	lastDataRow := len(styled)
+	hasBody := lastDataRow >= firstDataRow
+
+	// columnNames holds the generated named-range name for each column when
+	// StructuredRefs is set; it is nil otherwise.
+	var columnNames []string
+	if opts.StructuredRefs && len(styled) > 0 {
+		columnNames = generateColumnNames(styled, maxCols)
+	}
 
 	if len(opts.Totals) > 0 {
 		totalsStyle := &CellStyle{BackgroundColor: theme.totals, Bold: true}
 		totalsRow := make([]Cell, maxCols)
-		for j := 0; j < maxCols; j++ {
+		for j := range maxCols {
 			cell := createCell(cellData{ValueType: "string"})
 			if j < len(opts.Totals) {
-				if code, ok := opts.Totals[j].Func.subtotalCode(); ok && lastDataRow >= firstDataRow {
-					col := columnToLetters(j + 1)
-					formula := fmt.Sprintf("SUBTOTAL(%d;%s%d:%s%d)", code, col, firstDataRow, col, lastDataRow)
-					cell = createCell(cellData{ValueType: "formula", Value: formula})
+				if code, ok := opts.Totals[j].Func.subtotalCode(); ok && hasBody {
+					ref := ""
+					if columnNames != nil {
+						ref = columnNames[j]
+					} else {
+						col := columnToLetters(j + 1)
+						ref = fmt.Sprintf("%s%d:%s%d", col, firstDataRow, col, lastDataRow)
+					}
+					cell = createCell(cellData{ValueType: "formula", Value: fmt.Sprintf("SUBTOTAL(%d;%s)", code, ref)})
 				}
 			}
 			cell.style = totalsStyle
@@ -395,6 +424,18 @@ func MakeTable(cells [][]Cell, opts TableOptions) (Spreadsheet, error) {
 		return Spreadsheet{}, err
 	}
 
+	if columnNames != nil && hasBody {
+		for j := range maxCols {
+			col := columnToLetters(j + 1)
+			base := fmt.Sprintf("$%s.$%s$%d", defaultTableName, col, firstDataRow)
+			spreadsheet.NamedExpressions.NamedRanges = append(spreadsheet.NamedExpressions.NamedRanges, namedRange{
+				Name:             columnNames[j],
+				BaseCellAddress:  base,
+				CellRangeAddress: fmt.Sprintf("%s:.$%s$%d", base, col, lastDataRow),
+			})
+		}
+	}
+
 	if opts.AutoFilter && lastDataRow > 0 {
 		// The filter range covers the header and body but not the totals row,
 		// so filtering and sorting never move the aggregates.
@@ -406,6 +447,67 @@ func MakeTable(cells [][]Cell, opts TableOptions) (Spreadsheet, error) {
 	}
 
 	return spreadsheet, nil
+}
+
+// structuredRefCellRef matches names that look like a cell reference (e.g.
+// "Q1"), which LibreOffice rejects as a defined name.
+var structuredRefCellRef = regexp.MustCompile(`^[A-Za-z]{1,3}[0-9]+$`)
+
+// generateColumnNames derives a unique, valid named-range name for each of the
+// maxCols columns from the header row (styled[0]), avoiding collisions with any
+// user-defined range names already present on the cells.
+func generateColumnNames(styled [][]Cell, maxCols int) []string {
+	used := map[string]bool{}
+	for _, r := range styled {
+		for _, c := range r {
+			if c.rangeName != "" {
+				used[c.rangeName] = true
+			}
+		}
+	}
+
+	names := make([]string, maxCols)
+	for j := range maxCols {
+		header := ""
+		if j < len(styled[0]) {
+			header = styled[0][j].Text
+		}
+		base := sanitizeRangeName(header, j)
+		candidate := base
+		for n := 2; used[candidate]; n++ {
+			candidate = fmt.Sprintf("%s_%d", base, n)
+		}
+		used[candidate] = true
+		names[j] = candidate
+	}
+	return names
+}
+
+// sanitizeRangeName turns a column header into a valid ODF named-range name:
+// non-alphanumeric runs become underscores, an empty name falls back to
+// "Column<n>", a leading digit is prefixed, and names that look like a cell
+// reference get a trailing underscore.
+func sanitizeRangeName(header string, colIndex int) string {
+	var b strings.Builder
+	for _, r := range header {
+		switch {
+		case r >= 'A' && r <= 'Z', r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		default:
+			b.WriteRune('_')
+		}
+	}
+	name := strings.Trim(b.String(), "_")
+	if name == "" {
+		return fmt.Sprintf("Column%d", colIndex+1)
+	}
+	if name[0] >= '0' && name[0] <= '9' {
+		name = "_" + name
+	}
+	if structuredRefCellRef.MatchString(name) {
+		name += "_"
+	}
+	return name
 }
 
 // usedRangeAddress returns the table:target-range-address covering rowCount
