@@ -151,6 +151,29 @@ func TestAutoFilterMatchesOdfSchema(t *testing.T) {
 	validateAgainstSchema(t, "flat.fods", flatOds)
 }
 
+func TestTableMatchesOdfSchema(t *testing.T) {
+	spreadsheet, err := MakeTable([][]Cell{
+		{MakeCell("Product", "string"), MakeCell("Price", "string")},
+		{MakeCell("Pen", "string"), MakeCell("1.49", "float")},
+		{MakeCell("Desk", "string"), MakeCell("189.00", "float")},
+	}, TableOptions{
+		Name:       "Products",
+		Header:     true,
+		AutoFilter: true,
+		BandedRows: true,
+		Totals:     []Total{{TotalNone}, {TotalSum}},
+	})
+	if err != nil {
+		t.Fatalf("MakeTable: %v", err)
+	}
+
+	flatOds, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
+	validateAgainstSchema(t, "flat.fods", flatOds)
+}
+
 func TestFlatOdsMatchesOdfSchema(t *testing.T) {
 	for name, cells := range schemaTestCases {
 		t.Run(name, func(t *testing.T) {

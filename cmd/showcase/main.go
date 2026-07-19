@@ -32,6 +32,7 @@ func main() {
 		"data-types":  mustSpreadsheet("data-types", dataTypesDocument()),
 		"styles":      mustSpreadsheet("styles", stylesDocument()),
 		"auto-filter": autoFilterDocument(),
+		"table":       tableDocument(),
 	}
 
 	for name, spreadsheet := range documents {
@@ -164,4 +165,35 @@ func autoFilterDocument() rb.Spreadsheet {
 	}
 
 	return rb.EnableAutoFilter(mustSpreadsheet("auto-filter", cells))
+}
+
+// tableDocument shows MakeTable: a block of data marked as an Excel-style
+// table, with a styled header, banded body rows, AutoFilter buttons, and a
+// totals row of SUBTOTAL aggregates that respect the filter.
+func tableDocument() rb.Spreadsheet {
+	cells := [][]rb.Cell{
+		{rb.MakeCell("Product", "string"), rb.MakeCell("Category", "string"), rb.MakeCell("Quantity", "string"), rb.MakeCell("Price", "string")},
+		{rb.MakeCell("Laptop", "string"), rb.MakeCell("Electronics", "string"), rb.MakeCell("3", "float"), rb.MakeCell("999.00", "currency")},
+		{rb.MakeCell("Mouse", "string"), rb.MakeCell("Electronics", "string"), rb.MakeCell("10", "float"), rb.MakeCell("19.99", "currency")},
+		{rb.MakeCell("Desk", "string"), rb.MakeCell("Furniture", "string"), rb.MakeCell("2", "float"), rb.MakeCell("189.00", "currency")},
+		{rb.MakeCell("Pen", "string"), rb.MakeCell("Stationery", "string"), rb.MakeCell("50", "float"), rb.MakeCell("1.49", "currency")},
+	}
+
+	spreadsheet, err := rb.MakeTable(cells, rb.TableOptions{
+		Name:       "Products",
+		Header:     true,
+		AutoFilter: true,
+		BandedRows: true,
+		Style:      rb.TableStyleBlue,
+		Totals: []rb.Total{
+			{Func: rb.TotalNone},
+			{Func: rb.TotalNone},
+			{Func: rb.TotalSum},
+			{Func: rb.TotalAverage},
+		},
+	})
+	if err != nil {
+		log.Fatalf("table: %v", err)
+	}
+	return spreadsheet
 }
