@@ -134,6 +134,23 @@ func TestOdsPartsMatchOdfSchema(t *testing.T) {
 	}
 }
 
+func TestAutoFilterMatchesOdfSchema(t *testing.T) {
+	spreadsheet, err := MakeSpreadsheet([][]Cell{
+		{MakeCell("Name", "string"), MakeCell("Age", "string")},
+		{MakeCell("Alice", "string"), MakeCell("30", "float")},
+	})
+	if err != nil {
+		t.Fatalf("MakeSpreadsheet: %v", err)
+	}
+	spreadsheet = EnableAutoFilter(spreadsheet)
+
+	flatOds, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
+	validateAgainstSchema(t, "flat.fods", flatOds)
+}
+
 func TestFlatOdsMatchesOdfSchema(t *testing.T) {
 	for name, cells := range schemaTestCases {
 		t.Run(name, func(t *testing.T) {

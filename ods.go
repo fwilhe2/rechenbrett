@@ -186,6 +186,46 @@ func MakeSpreadsheetWithName(name string, cells [][]Cell) (Spreadsheet, error) {
 	}, nil
 }
 
+// EnableAutoFilter turns on AutoFilter dropdown buttons over the used cell
+// range of every non-empty sheet in spreadsheet, so the generated document
+// opens with filter dropdowns on each sheet's data. It emits a
+// table:database-range with table:display-filter-buttons="true" but no saved
+// filter conditions, leaving all rows visible.
+//
+// Calling it more than once replaces any previously enabled AutoFilter.
+func EnableAutoFilter(spreadsheet Spreadsheet) Spreadsheet {
+	var ranges []databaseRange
+	for i, t := range spreadsheet.Tables {
+		rowCount := len(t.Rows)
+		if rowCount == 0 {
+			continue
+		}
+		colCount := 1
+		for _, r := range t.Rows {
+			colCount = max(colCount, len(r.Cells))
+		}
+		ranges = append(ranges, databaseRange{
+			Name:                 fmt.Sprintf("__Anonymous_Sheet_DB__%d", i),
+			TargetRangeAddress:   usedRangeAddress(t.Name, rowCount, colCount),
+			DisplayFilterButtons: "true",
+		})
+	}
+	if len(ranges) == 0 {
+		spreadsheet.DatabaseRanges = nil
+		return spreadsheet
+	}
+	spreadsheet.DatabaseRanges = &databaseRanges{Ranges: ranges}
+	return spreadsheet
+}
+
+// usedRangeAddress returns the table:target-range-address covering rowCount
+// rows and colCount columns of the sheet, starting at A1 — e.g.
+// "Sheet1.A1:Sheet1.B3". Unlike named ranges, database ranges use unanchored
+// (no dollar sign) cell references.
+func usedRangeAddress(sheet string, rowCount, colCount int) string {
+	return fmt.Sprintf("%s.A1:%s.%s%d", sheet, sheet, columnToLetters(colCount), rowCount)
+}
+
 // customStyleKey identifies a distinct generated cell style, so cells
 // sharing the same CellStyle and base data style reuse one style definition.
 type customStyleKey struct {
@@ -631,6 +671,11 @@ type Spreadsheet struct {
 	Tables           []table          `xml:"table:table"`
 	NamedExpressions namedExpressions `xml:"table:named-expressions"`
 
+	// DatabaseRanges holds AutoFilter definitions enabled via
+	// [EnableAutoFilter]. The ODF schema requires table:database-ranges to
+	// follow table:named-expressions, so this field is declared after it.
+	DatabaseRanges *databaseRanges `xml:"table:database-ranges,omitempty"`
+
 	// customStyles holds the cell styles generated for cells created with
 	// [MakeStyledCell]. It is emitted into office:automatic-styles by
 	// [MakeFlatOds] and [WriteOds].
@@ -843,6 +888,18 @@ type dateMonth struct {
 type dateDay struct {
 	XMLName xml.Name `xml:"number:day"`
 	Style   string   `xml:"number:style,attr"`
+}
+
+type databaseRanges struct {
+	XMLName xml.Name        `xml:"table:database-ranges"`
+	Ranges  []databaseRange `xml:"table:database-range"`
+}
+
+type databaseRange struct {
+	XMLName              xml.Name `xml:"table:database-range"`
+	Name                 string   `xml:"table:name,attr,omitempty"`
+	TargetRangeAddress   string   `xml:"table:target-range-address,attr"`
+	DisplayFilterButtons string   `xml:"table:display-filter-buttons,attr,omitempty"`
 }
 
 type namedExpressions struct {

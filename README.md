@@ -101,6 +101,14 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
 
 - `MakeSpreadsheetWithName(name string, cells [][]Cell) (Spreadsheet, error)` — like `MakeSpreadsheet`, with a custom sheet name.
 
+- `EnableAutoFilter(spreadsheet Spreadsheet) Spreadsheet` — returns the spreadsheet with AutoFilter dropdown buttons enabled over the used cell range of every non-empty sheet, so the generated document opens with filter dropdowns on the header row. It sets the buttons only (no saved filter conditions, so all rows stay visible); calling it again replaces any previously enabled AutoFilter. Compose it with the `MakeSpreadsheet` result before serializing:
+
+  ```go
+  spreadsheet, err := rb.MakeSpreadsheet(cells)
+  // ...
+  spreadsheet = rb.EnableAutoFilter(spreadsheet)
+  ```
+
 - `MakeOds(spreadsheet Spreadsheet) (*bytes.Buffer, error)` — serializes the spreadsheet as a zipped OpenDocument package (`.ods`). Implemented as `WriteOds` into a `bytes.Buffer`; prefer calling `WriteOds` directly when you already have an `io.Writer` (a file, an HTTP response, ...) to avoid the extra buffer copy.
 
 - `WriteOds(w io.Writer, spreadsheet Spreadsheet) error` — writes the zipped OpenDocument package (`.ods`) directly to `w`. This is the recommended entry point for producing `.ods` output: it streams archive entries straight to `w` via `archive/zip`, rather than materializing the whole archive in memory first.
@@ -111,7 +119,7 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
 
 ## Showcase
 
-`make showcase` (or `go run ./cmd/showcase`) generates example `.ods` and `.fods` documents into `output/` (gitignored) that exercise rechenbrett's features — every value type, formulas and named ranges, and custom cell styles with the `Color*` palette — for opening in a spreadsheet application or spot-checking output. It runs in well under a second and needs no LibreOffice install, unlike the test suite (`make test`), which drives LibreOffice to verify rendered values.
+`make showcase` (or `go run ./cmd/showcase`) generates example `.ods` and `.fods` documents into `output/` (gitignored) that exercise rechenbrett's features — every value type, formulas and named ranges, custom cell styles with the `Color*` palette, and an AutoFilter table — for opening in a spreadsheet application or spot-checking output. It runs in well under a second and needs no LibreOffice install, unlike the test suite (`make test`), which drives LibreOffice to verify rendered values.
 
 ## Related
 

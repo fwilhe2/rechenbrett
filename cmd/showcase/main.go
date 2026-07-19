@@ -28,17 +28,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	documents := map[string][][]rb.Cell{
-		"data-types": dataTypesDocument(),
-		"styles":     stylesDocument(),
+	documents := map[string]rb.Spreadsheet{
+		"data-types":  mustSpreadsheet("data-types", dataTypesDocument()),
+		"styles":      mustSpreadsheet("styles", stylesDocument()),
+		"auto-filter": autoFilterDocument(),
 	}
 
-	for name, cells := range documents {
-		spreadsheet, err := rb.MakeSpreadsheet(cells)
-		if err != nil {
-			log.Fatalf("%s: %v", name, err)
-		}
-
+	for name, spreadsheet := range documents {
 		odsPath := filepath.Join(*out, name+".ods")
 		odsFile, err := os.Create(odsPath)
 		if err != nil {
@@ -62,6 +58,16 @@ func main() {
 		}
 		fmt.Println("wrote", fodsPath)
 	}
+}
+
+// mustSpreadsheet builds a spreadsheet from cells, exiting on error. The
+// showcase inputs are all valid, so an error here is a programming mistake.
+func mustSpreadsheet(name string, cells [][]rb.Cell) rb.Spreadsheet {
+	spreadsheet, err := rb.MakeSpreadsheet(cells)
+	if err != nil {
+		log.Fatalf("%s: %v", name, err)
+	}
+	return spreadsheet
 }
 
 // dataTypesDocument exercises every value type MakeCell supports, plus
@@ -135,4 +141,27 @@ func stylesDocument() [][]rb.Cell {
 		})
 	}
 	return rows
+}
+
+// autoFilterDocument shows EnableAutoFilter: a small table that opens with
+// AutoFilter dropdown buttons on its header row.
+func autoFilterDocument() rb.Spreadsheet {
+	header := rb.CellStyle{
+		BackgroundColor: rb.ColorNavy,
+		FontColor:       rb.ColorWhite,
+		Bold:            true,
+	}
+	cells := [][]rb.Cell{
+		{
+			rb.MakeStyledCell("Product", "string", header),
+			rb.MakeStyledCell("Category", "string", header),
+			rb.MakeStyledCell("Price", "string", header),
+		},
+		{rb.MakeCell("Laptop", "string"), rb.MakeCell("Electronics", "string"), rb.MakeCell("999.00", "currency")},
+		{rb.MakeCell("Mouse", "string"), rb.MakeCell("Electronics", "string"), rb.MakeCell("19.99", "currency")},
+		{rb.MakeCell("Desk", "string"), rb.MakeCell("Furniture", "string"), rb.MakeCell("189.00", "currency")},
+		{rb.MakeCell("Pen", "string"), rb.MakeCell("Stationery", "string"), rb.MakeCell("1.49", "currency")},
+	}
+
+	return rb.EnableAutoFilter(mustSpreadsheet("auto-filter", cells))
 }

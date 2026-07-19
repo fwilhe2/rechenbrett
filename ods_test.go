@@ -321,6 +321,43 @@ func TestUnitRanges(t *testing.T) {
 	assert(t, strings.Contains(actual, "<table:named-range table:name=\"InputF\" table:base-cell-address=\"$Sheet1.$B$5\" table:cell-range-address=\"$Sheet1.$B$5\"></table:named-range>"), "Expected input F in spreadsheet")
 }
 
+func TestUnitAutoFilter(t *testing.T) {
+	givenThoseCells := [][]Cell{
+		{MakeCell("Name", "string"), MakeCell("Age", "string")},
+		{MakeCell("Alice", "string"), MakeCell("30", "float")},
+		{MakeCell("Bob", "string"), MakeCell("25", "float")},
+	}
+
+	spreadsheet, err := MakeSpreadsheet(givenThoseCells)
+	if err != nil {
+		t.Fatalf("MakeSpreadsheet: %v", err)
+	}
+	spreadsheet = EnableAutoFilter(spreadsheet)
+
+	actual, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
+
+	assert(t, strings.Contains(actual, "<table:database-ranges>"), "expected a database-ranges element")
+	assert(t, strings.Contains(actual, `table:target-range-address="Sheet1.A1:Sheet1.B3"`), "expected the filter to cover the used range Sheet1.A1:Sheet1.B3")
+	assert(t, strings.Contains(actual, `table:display-filter-buttons="true"`), "expected filter buttons to be enabled")
+}
+
+func TestUnitNoAutoFilterByDefault(t *testing.T) {
+	spreadsheet, err := MakeSpreadsheet([][]Cell{{MakeCell("Name", "string")}})
+	if err != nil {
+		t.Fatalf("MakeSpreadsheet: %v", err)
+	}
+
+	actual, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
+
+	assert(t, !strings.Contains(actual, "database-range"), "expected no database-range without EnableAutoFilter")
+}
+
 func TestUnitTimeParse(t *testing.T) {
 	expected := "PT19H03M00S"
 
@@ -522,4 +559,3 @@ func TestUnitRow(t *testing.T) {
 
 	assert(t, actual == expectThisXml, fmt.Sprintf("Expected:\n%s\nGot:\n%s\n", expectThisXml, actual))
 }
-
