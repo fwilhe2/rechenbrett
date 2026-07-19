@@ -6,9 +6,10 @@
 // packages (.ods) and as flat XML documents (.fods).
 //
 // Cells are created with [MakeCell], [MakeRangeCell], or [MakeStyledCell],
-// arranged in rows, and combined into a [Spreadsheet] with
-// [MakeSpreadsheet]. The spreadsheet is then serialized with [MakeOds],
-// [WriteOds], or [MakeFlatOds].
+// arranged in rows, and combined into a [Spreadsheet] with [MakeSpreadsheet]
+// or, for an Excel-style table with a header, banded rows, AutoFilter, and a
+// totals row, with [MakeTable]. The spreadsheet is then serialized with
+// [MakeOds], [WriteOds], or [MakeFlatOds].
 package ods
 
 import (
@@ -223,6 +224,188 @@ func EnableAutoFilter(spreadsheet Spreadsheet) Spreadsheet {
 	}
 	spreadsheet.DatabaseRanges = &databaseRanges{Ranges: ranges}
 	return spreadsheet
+}
+
+// TableStyle selects a built-in color theme for [MakeTable], setting the
+// header fill and text, the banded-row fill, and the totals-row fill.
+type TableStyle int
+
+const (
+	// TableStyleBlue is the default theme: a dark-blue header with white text.
+	TableStyleBlue TableStyle = iota
+	// TableStyleGray is a neutral gray-header theme.
+	TableStyleGray
+	// TableStyleGreen is a green-header theme.
+	TableStyleGreen
+)
+
+// tableTheme holds the resolved colors for a TableStyle.
+type tableTheme struct {
+	headerBackground string
+	headerFont       string
+	band             string
+	totals           string
+}
+
+func themeFor(style TableStyle) tableTheme {
+	switch style {
+	case TableStyleGray:
+		return tableTheme{headerBackground: "#5b5b5b", headerFont: ColorWhite, band: "#e0e0e0", totals: "#bdbdbd"}
+	case TableStyleGreen:
+		return tableTheme{headerBackground: "#2e7d32", headerFont: ColorWhite, band: "#e2efda", totals: "#a9d08e"}
+	default: // TableStyleBlue
+		return tableTheme{headerBackground: "#00599d", headerFont: ColorWhite, band: "#dddddd", totals: "#adc5e7"}
+	}
+}
+
+// TotalFunc selects the aggregate for a totals-row cell. Each maps to a
+// SUBTOTAL function number so the aggregate respects the AutoFilter state
+// (hidden rows are excluded).
+type TotalFunc int
+
+const (
+	// TotalNone leaves the totals-row cell empty (still styled).
+	TotalNone TotalFunc = iota
+	TotalSum
+	TotalAverage
+	TotalCount
+	TotalMin
+	TotalMax
+)
+
+// subtotalCode returns the SUBTOTAL function number for f and whether f names
+// an aggregate at all (TotalNone does not).
+func (f TotalFunc) subtotalCode() (int, bool) {
+	switch f {
+	case TotalSum:
+		return 9, true
+	case TotalAverage:
+		return 1, true
+	case TotalCount:
+		return 3, true // COUNTA: count non-empty cells
+	case TotalMin:
+		return 5, true
+	case TotalMax:
+		return 4, true
+	default:
+		return 0, false
+	}
+}
+
+// Total names the aggregate for one column's totals-row cell.
+type Total struct {
+	Func TotalFunc
+}
+
+// TableOptions controls how [MakeTable] formats a block of data as an
+// Excel-style table. The zero value produces a plain, unstyled table with no
+// header, filter, banding, or totals.
+type TableOptions struct {
+	// Name is the database-range (named region) name. Defaults to "Table1".
+	Name string
+	// Header treats the first row as a styled header row.
+	Header bool
+	// AutoFilter emits filter-button dropdowns over the header and body.
+	AutoFilter bool
+	// BandedRows alternates the fill of body rows for readability.
+	BandedRows bool
+	// Totals, if non-empty, appends a totals row with one SUBTOTAL aggregate
+	// per column. Columns beyond len(Totals), and entries with TotalNone, get
+	// an empty (styled) cell.
+	Totals []Total
+	// Style selects the color theme. Defaults to TableStyleBlue.
+	Style TableStyle
+}
+
+// MakeTable arranges cells into a single-sheet spreadsheet and marks the whole
+// block as an Excel-style table: an optional styled header, optional banded
+// body rows, an optional totals row of SUBTOTAL aggregates, and optional
+// AutoFilter dropdown buttons — the closest ODF approximation of Excel's
+// "Format as Table".
+//
+// It reports invalid cells (bad value types, unparseable dates, times, or
+// numbers) and duplicate range names the same way [MakeSpreadsheet] does. The
+// caller's cells are not modified.
+func MakeTable(cells [][]Cell, opts TableOptions) (Spreadsheet, error) {
+	name := opts.Name
+	if name == "" {
+		name = "Table1"
+	}
+	theme := themeFor(opts.Style)
+
+	// Work on a copy so styling never mutates the caller's cells.
+	styled := make([][]Cell, len(cells))
+	for i, r := range cells {
+		rc := make([]Cell, len(r))
+		copy(rc, r)
+		styled[i] = rc
+	}
+
+	maxCols := 0
+	for _, r := range styled {
+		maxCols = max(maxCols, len(r))
+	}
+
+	bodyStart := 0
+	if opts.Header && len(styled) > 0 {
+		bodyStart = 1
+		headerStyle := &CellStyle{BackgroundColor: theme.headerBackground, FontColor: theme.headerFont, Bold: true}
+		for j := range styled[0] {
+			styled[0][j].style = headerStyle
+		}
+	}
+
+	if opts.BandedRows {
+		bandStyle := &CellStyle{BackgroundColor: theme.band}
+		for i := bodyStart; i < len(styled); i++ {
+			// Band every other body row, leaving the first body row plain.
+			if (i-bodyStart)%2 == 1 {
+				for j := range styled[i] {
+					styled[i][j].style = bandStyle
+				}
+			}
+		}
+	}
+
+	// firstDataRow/lastDataRow are the 1-based sheet rows spanned by the body,
+	// used for both the totals SUBTOTAL ranges and the AutoFilter range.
+	firstDataRow := bodyStart + 1
+	lastDataRow := len(styled)
+
+	if len(opts.Totals) > 0 {
+		totalsStyle := &CellStyle{BackgroundColor: theme.totals, Bold: true}
+		totalsRow := make([]Cell, maxCols)
+		for j := 0; j < maxCols; j++ {
+			cell := createCell(cellData{ValueType: "string"})
+			if j < len(opts.Totals) {
+				if code, ok := opts.Totals[j].Func.subtotalCode(); ok && lastDataRow >= firstDataRow {
+					col := columnToLetters(j + 1)
+					formula := fmt.Sprintf("SUBTOTAL(%d;%s%d:%s%d)", code, col, firstDataRow, col, lastDataRow)
+					cell = createCell(cellData{ValueType: "formula", Value: formula})
+				}
+			}
+			cell.style = totalsStyle
+			totalsRow[j] = cell
+		}
+		styled = append(styled, totalsRow)
+	}
+
+	spreadsheet, err := MakeSpreadsheetWithName(defaultTableName, styled)
+	if err != nil {
+		return Spreadsheet{}, err
+	}
+
+	if opts.AutoFilter && lastDataRow > 0 {
+		// The filter range covers the header and body but not the totals row,
+		// so filtering and sorting never move the aggregates.
+		spreadsheet.DatabaseRanges = &databaseRanges{Ranges: []databaseRange{{
+			Name:                 name,
+			TargetRangeAddress:   usedRangeAddress(defaultTableName, lastDataRow, maxCols),
+			DisplayFilterButtons: "true",
+		}}}
+	}
+
+	return spreadsheet, nil
 }
 
 // usedRangeAddress returns the table:target-range-address covering rowCount

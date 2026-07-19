@@ -109,17 +109,35 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
   spreadsheet = rb.EnableAutoFilter(spreadsheet)
   ```
 
+- `MakeTable(cells [][]Cell, opts TableOptions) (Spreadsheet, error)` — arranges cells into a single-sheet spreadsheet and marks the whole block as an Excel-style table (the closest ODF approximation of Excel's *Format as Table*): a styled header row, banded body rows, AutoFilter dropdown buttons, and a totals row of `SUBTOTAL` aggregates that respect the filter. It reports invalid cells the same way `MakeSpreadsheet` does and never modifies the caller's cells. Everything is opt-in through `TableOptions`; the zero value produces a plain, unstyled table.
+
+  ```go
+  spreadsheet, err := rb.MakeTable(cells, rb.TableOptions{
+      Name:       "Products", // database-range / named-region name (default "Table1")
+      Header:     true,        // style the first row as a header
+      AutoFilter: true,        // filter dropdowns over header + body (not the totals row)
+      BandedRows: true,        // alternate the body-row fill
+      Style:      rb.TableStyleBlue, // or TableStyleGray, TableStyleGreen
+      Totals: []rb.Total{      // one aggregate per column; omitted/TotalNone -> empty cell
+          {Func: rb.TotalNone},
+          {Func: rb.TotalSum},
+      },
+  })
+  ```
+
+  `TotalFunc` values are `TotalNone`, `TotalSum`, `TotalAverage`, `TotalCount`, `TotalMin`, and `TotalMax`, each emitted as the corresponding `SUBTOTAL` function so the aggregate excludes rows hidden by the AutoFilter. The header/banded/totals fills reuse the same generated-style deduplication as `MakeStyledCell`.
+
 - `MakeOds(spreadsheet Spreadsheet) (*bytes.Buffer, error)` — serializes the spreadsheet as a zipped OpenDocument package (`.ods`). Implemented as `WriteOds` into a `bytes.Buffer`; prefer calling `WriteOds` directly when you already have an `io.Writer` (a file, an HTTP response, ...) to avoid the extra buffer copy.
 
 - `WriteOds(w io.Writer, spreadsheet Spreadsheet) error` — writes the zipped OpenDocument package (`.ods`) directly to `w`. This is the recommended entry point for producing `.ods` output: it streams archive entries straight to `w` via `archive/zip`, rather than materializing the whole archive in memory first.
 
 - `MakeFlatOds(spreadsheet Spreadsheet) (string, error)` — serializes the spreadsheet as a flat OpenDocument XML document (`.fods`). There is no `WriteFods` counterpart to `WriteOds`: the flat document is built with `xml.MarshalIndent`, which has no streaming variant, so the full document is always materialized in memory before `MakeFlatOds` returns it as a string — a `Write` variant would offer no benefit over calling `MakeFlatOds` and writing the result yourself.
 
-`Cell`, `Spreadsheet`, and `CellStyle` are the only exported types beyond the functions above. `Cell` and `Spreadsheet` fields are exported solely for XML marshaling and aren't meant to be constructed or read directly — build values through the functions instead.
+Beyond the functions above, the exported types are `Cell`, `Spreadsheet`, `CellStyle`, and the `MakeTable` option types (`TableOptions`, `Total`, `TotalFunc`, `TableStyle`). `Cell` and `Spreadsheet` fields are exported solely for XML marshaling and aren't meant to be constructed or read directly — build values through the functions instead.
 
 ## Showcase
 
-`make showcase` (or `go run ./cmd/showcase`) generates example `.ods` and `.fods` documents into `output/` (gitignored) that exercise rechenbrett's features — every value type, formulas and named ranges, custom cell styles with the `Color*` palette, and an AutoFilter table — for opening in a spreadsheet application or spot-checking output. It runs in well under a second and needs no LibreOffice install, unlike the test suite (`make test`), which drives LibreOffice to verify rendered values.
+`make showcase` (or `go run ./cmd/showcase`) generates example `.ods` and `.fods` documents into `output/` (gitignored) that exercise rechenbrett's features — every value type, formulas and named ranges, custom cell styles with the `Color*` palette, an AutoFilter table, and an Excel-style `MakeTable` table with a totals row — for opening in a spreadsheet application or spot-checking output. It runs in well under a second and needs no LibreOffice install, unlike the test suite (`make test`), which drives LibreOffice to verify rendered values.
 
 ## Compatibility with other spreadsheet applications
 
