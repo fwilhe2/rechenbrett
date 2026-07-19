@@ -434,6 +434,63 @@ func TestUnitTable(t *testing.T) {
 	assert(t, strings.Contains(actual, `fo:background-color="#adc5e7"`), "expected the totals-row fill")
 }
 
+func TestUnitTableStructuredRefs(t *testing.T) {
+	cells := [][]Cell{
+		{MakeCell("Unit Price", "string"), MakeCell("Total", "string")},
+		{MakeCell("1.49", "float"), MakeCell("2.98", "float")},
+		{MakeCell("189.00", "float"), MakeCell("378.00", "float")},
+	}
+
+	spreadsheet, err := MakeTable(cells, TableOptions{
+		Header:         true,
+		StructuredRefs: true,
+		Totals:         []Total{{TotalNone}, {TotalSum}},
+	})
+	if err != nil {
+		t.Fatalf("MakeTable: %v", err)
+	}
+
+	actual, err := MakeFlatOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeFlatOds: %v", err)
+	}
+
+	// The header "Unit Price" is sanitized to a valid range name spanning the
+	// column's body rows (rows 2-3), not the header or totals row.
+	assert(t, strings.Contains(actual, `<table:named-range table:name="Unit_Price" table:base-cell-address="$Sheet1.$A$2" table:cell-range-address="$Sheet1.$A$2:.$A$3">`), "expected a column-spanning named range for the first column")
+	assert(t, strings.Contains(actual, `<table:named-range table:name="Total" table:base-cell-address="$Sheet1.$B$2" table:cell-range-address="$Sheet1.$B$2:.$B$3">`), "expected a column-spanning named range for the second column")
+	// The totals cell references the column by name, not by address.
+	assert(t, strings.Contains(actual, `table:formula="of:=SUBTOTAL(9;Total)"`), "expected the totals cell to reference the column by name")
+	assert(t, !strings.Contains(actual, "SUBTOTAL(9;[.B2:.B3])"), "expected no raw-address SUBTOTAL when StructuredRefs is set")
+}
+
+func TestUnitTableStructuredRefsRequiresHeader(t *testing.T) {
+	_, err := MakeTable([][]Cell{{MakeCell("a", "string")}}, TableOptions{StructuredRefs: true})
+	if err == nil || !strings.Contains(err.Error(), "Header") {
+		t.Errorf("expected StructuredRefs-without-Header error, got: %v", err)
+	}
+}
+
+func TestUnitSanitizeRangeName(t *testing.T) {
+	cases := []struct {
+		header   string
+		colIndex int
+		want     string
+	}{
+		{"Unit Price", 0, "Unit_Price"},
+		{"unit_price", 0, "unit_price"},
+		{"total-cost", 0, "total_cost"},
+		{"2022", 0, "_2022"},
+		{"Q1", 0, "Q1_"},   // looks like a cell reference
+		{"", 3, "Column4"}, // empty header falls back to a positional name
+		{"  ", 1, "Column2"},
+	}
+	for _, c := range cases {
+		got := sanitizeRangeName(c.header, c.colIndex)
+		assert(t, got == c.want, fmt.Sprintf("sanitizeRangeName(%q, %d) = %q, want %q", c.header, c.colIndex, got, c.want))
+	}
+}
+
 func TestUnitTablePlainByDefault(t *testing.T) {
 	// The zero-value TableOptions produces a plain table: no header styling,
 	// no filter, no banding, no totals.
@@ -508,6 +565,42 @@ func TestTable(t *testing.T) {
 
 	tableTest(t, "table", "ods", givenThoseCells, expectedThisCsv)
 	tableTest(t, "table", "fods", givenThoseCells, expectedThisCsv)
+}
+
+func TestTableStructuredRefs(t *testing.T) {
+	cells := [][]Cell{
+		{MakeCell("Product", "string"), MakeCell("Price", "string")},
+		{MakeCell("Pen", "string"), MakeCell("1.49", "float")},
+		{MakeCell("Desk", "string"), MakeCell("189.00", "float")},
+	}
+
+	spreadsheet, err := MakeTable(cells, TableOptions{
+		Header:         true,
+		StructuredRefs: true,
+		Totals:         []Total{{TotalNone}, {TotalSum}},
+	})
+	if err != nil {
+		t.Fatalf("MakeTable: %v", err)
+	}
+
+	// The totals cell is SUBTOTAL(9;Price); LibreOffice must resolve the "Price"
+	// named range and sum the body (1.49 + 189.00 = 190.49).
+	expectedThisCsv := make(map[string][][]string)
+	expectedThisCsv["en_US.UTF-8"] = [][]string{
+		{"Product", "Price"},
+		{"Pen", "1.49"},
+		{"Desk", "189.00"},
+		{"", "190.49"},
+	}
+	expectedThisCsv["de_DE.UTF-8"] = [][]string{
+		{"Product", "Price"},
+		{"Pen", "1,49"},
+		{"Desk", "189,00"},
+		{"", "190,49"},
+	}
+
+	renderAndCompare(t, "table-structured-refs", "ods", spreadsheet, expectedThisCsv)
+	renderAndCompare(t, "table-structured-refs", "fods", spreadsheet, expectedThisCsv)
 }
 
 func TestUnitTimeParse(t *testing.T) {

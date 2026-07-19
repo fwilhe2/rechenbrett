@@ -157,11 +157,12 @@ func TestTableMatchesOdfSchema(t *testing.T) {
 		{MakeCell("Pen", "string"), MakeCell("1.49", "float")},
 		{MakeCell("Desk", "string"), MakeCell("189.00", "float")},
 	}, TableOptions{
-		Name:       "Products",
-		Header:     true,
-		AutoFilter: true,
-		BandedRows: true,
-		Totals:     []Total{{TotalNone}, {TotalSum}},
+		Name:           "Products",
+		Header:         true,
+		AutoFilter:     true,
+		BandedRows:     true,
+		StructuredRefs: true,
+		Totals:         []Total{{TotalNone}, {TotalSum}},
 	})
 	if err != nil {
 		t.Fatalf("MakeTable: %v", err)
