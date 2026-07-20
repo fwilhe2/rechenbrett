@@ -86,7 +86,7 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
   - `"date"` (ISO `YYYY-MM-DD`, German `DD.MM.YYYY`, or US `MM/DD/YYYY`)
   - `"time"` (`HH:MM` or `HH:MM:SS`)
   - `"percentage"` (a fraction, e.g. `"0.42"` for 42 %)
-  - `"formula"`
+  - `"formula"` (in the familiar A1 notation, e.g. `"SUM(A1:B1)"`, `"InputA*2"`, without a leading `=`; it is translated to the OpenFormula notation the format stores, e.g. `of:=SUM([.A1:.B1])`)
   - `"currency"` (defaults to EUR), `"currency-eur"`, `"currency-usd"`, `"currency-gbp"`
 
   Invalid values or value types are not reported here; they surface as an error from `MakeSpreadsheet`.
@@ -120,6 +120,19 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
 ## Showcase
 
 `make showcase` (or `go run ./cmd/showcase`) generates example `.ods` and `.fods` documents into `output/` (gitignored) that exercise rechenbrett's features — every value type, formulas and named ranges, custom cell styles with the `Color*` palette, and an AutoFilter table — for opening in a spreadsheet application or spot-checking output. It runs in well under a second and needs no LibreOffice install, unlike the test suite (`make test`), which drives LibreOffice to verify rendered values.
+
+## Compatibility with other spreadsheet applications
+
+The generated documents are validated against the OpenDocument schema and are meant to open in any application that reads the format, not just LibreOffice.
+
+That is not something the LibreOffice-backed tests can establish on their own: LibreOffice accepts a good deal that the format does not actually allow, and repairs the rest silently, so documents that it renders correctly can still be misread elsewhere. Two things guard against this:
+
+- `compat_test.go` inspects the generated XML directly for the mistakes stricter consumers punish.
+- The same file has [Gnumeric](http://www.gnumeric.org/) read a generated document back. Gnumeric is an implementation of the format independent of LibreOffice and considerably stricter about it, so it catches documents that do not conform — a formula it cannot parse is a formula Excel cannot parse either.
+
+The cross-reader test skips when the tool it needs is unavailable, so `go test ./...` stays runnable without it. Setting `RECHENBRETT_REQUIRE_CROSS_READERS=1` turns that skip into a failure; the CI job that installs the reader sets it, so a reader that could not be installed fails visibly instead of quietly testing nothing.
+
+Testing against Microsoft Excel itself is not automated: it requires either a Windows machine with a licensed Office driving Excel through COM, or a Microsoft 365 account and the Graph API to have Excel's own import engine open the file server-side.
 
 ## Related
 
