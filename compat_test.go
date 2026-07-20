@@ -75,6 +75,12 @@ func compatSpreadsheet(t *testing.T) Spreadsheet {
 }
 
 var (
+	styleDefinition   = regexp.MustCompile(`style:name="([^"]+)"`)
+	parentStyleUse    = regexp.MustCompile(`style:parent-style-name="([^"]+)"`)
+	dataStyleUse      = regexp.MustCompile(`style:data-style-name="([^"]+)"`)
+	cellStyleUse      = regexp.MustCompile(`table:style-name="([^"]+)"`)
+	masterPageUse     = regexp.MustCompile(`style:master-page-name="([^"]+)"`)
+	pageLayoutUse     = regexp.MustCompile(`style:page-layout-name="([^"]+)"`)
 	formulaAttribute  = regexp.MustCompile(`table:formula="([^"]+)"`)
 	namespaceQualifie = regexp.MustCompile(`^[a-z]+:=`)
 )
@@ -85,6 +91,52 @@ func matches(pattern *regexp.Regexp, content string) []string {
 		found = append(found, m[1])
 	}
 	return found
+}
+
+// TestCompatStyleReferencesResolve checks that every style a document refers
+// to is defined somewhere in it. A dangling reference costs the formatting
+// attached to it in consumers that, unlike LibreOffice, do not invent the
+// missing style.
+func TestCompatStyleReferencesResolve(t *testing.T) {
+	parts := readOdsParts(t, compatSpreadsheet(t))
+	both := parts["content.xml"] + parts["styles.xml"]
+
+	defined := map[string]bool{}
+	for _, name := range matches(styleDefinition, both) {
+		defined[name] = true
+	}
+
+	for _, pattern := range []*regexp.Regexp{
+		parentStyleUse, dataStyleUse, cellStyleUse, masterPageUse, pageLayoutUse,
+	} {
+		for _, used := range matches(pattern, both) {
+			if !defined[used] {
+				t.Errorf("style %q is referenced but never defined", used)
+			}
+		}
+	}
+}
+
+// TestCompatStylesXmlHasPageSetup checks that styles.xml carries the common
+// styles and the master page. Excel expects a page setup for every sheet.
+func TestCompatStylesXmlHasPageSetup(t *testing.T) {
+	parts := readOdsParts(t, compatSpreadsheet(t))
+	styles := parts["styles.xml"]
+
+	for _, expected := range []string{
+		"<office:styles>",
+		"<office:master-styles>",
+		"<style:master-page",
+		"<style:page-layout",
+	} {
+		if !strings.Contains(styles, expected) {
+			t.Errorf("styles.xml does not contain %s", expected)
+		}
+	}
+
+	if !strings.Contains(parts["content.xml"], `table:style-name="`+tableStyleName+`"`) {
+		t.Errorf("the sheet does not refer to the table style binding it to the master page")
+	}
 }
 
 // TestCompatFormulasAreNamespaced checks that stored formulas carry a
