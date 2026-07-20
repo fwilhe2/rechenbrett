@@ -84,8 +84,8 @@ Cells are created with `MakeCell`, `MakeRangeCell`, or `MakeStyledCell`, arrange
   - `"string"`
   - `"float"`
   - `"date"` (ISO `YYYY-MM-DD`, German `DD.MM.YYYY`, or US `MM/DD/YYYY`)
-  - `"time"` (`HH:MM` or `HH:MM:SS`)
-  - `"percentage"` (a fraction, e.g. `"0.42"` for 42 %)
+  - `"time"` (`HH:MM` or `HH:MM:SS`; rendered as `HH:MM:SS`)
+  - `"percentage"` (a fraction, e.g. `"0.42"` for 42 %; rendered with two decimals)
   - `"formula"` (in the familiar A1 notation, e.g. `"SUM(A1:B1)"`, `"InputA*2"`, without a leading `=`; it is translated to the OpenFormula notation the format stores, e.g. `of:=SUM([.A1:.B1])`)
   - `"currency"` (defaults to EUR), `"currency-eur"`, `"currency-usd"`, `"currency-gbp"`
 
@@ -127,10 +127,12 @@ The generated documents are validated against the OpenDocument schema and are me
 
 That is not something the LibreOffice-backed tests can establish on their own: LibreOffice accepts a good deal that the format does not actually allow, and repairs the rest silently, so documents that it renders correctly can still be misread elsewhere. Two things guard against this:
 
-- `compat_test.go` inspects the generated XML directly for the mistakes stricter consumers punish.
-- The same file has [Gnumeric](http://www.gnumeric.org/) read a generated document back. Gnumeric is an implementation of the format independent of LibreOffice and considerably stricter about it, so it catches documents that do not conform — a formula it cannot parse is a formula Excel cannot parse either.
+- `compat_test.go` inspects the generated XML directly for the mistakes stricter consumers punish — dangling style references, formulas without a namespace prefix, a missing page setup, styles marked as discardable, zip timestamps a zip archive cannot express.
+- The same file has two other applications read a generated document back, each catching a different kind of mistake:
+  - [Gnumeric](http://www.gnumeric.org/) is an implementation of the format independent of LibreOffice and considerably stricter about it, so it catches documents that do not **conform** — a formula it cannot parse is a formula Excel cannot parse either.
+  - [Euro-Office](https://github.com/Euro-Office) (a fork of ONLYOFFICE) converts a document to an OOXML-shaped internal model on import, which is what Excel does as well. It is more forgiving about the format itself, but it shows what Excel will **display**: a value that survives the import while losing its number format renders as something else entirely.
 
-The cross-reader test skips when the tool it needs is unavailable, so `go test ./...` stays runnable without it. Setting `RECHENBRETT_REQUIRE_CROSS_READERS=1` turns that skip into a failure; the CI job that installs the reader sets it, so a reader that could not be installed fails visibly instead of quietly testing nothing.
+Both tests skip when the tool they need is unavailable, so `go test ./...` stays runnable without them. Setting `RECHENBRETT_REQUIRE_CROSS_READERS=1` turns that skip into a failure; the two CI jobs that install the readers set it, so a reader that could not be installed fails visibly instead of quietly testing nothing. `RECHENBRETT_CONTAINER_RUNTIME` picks the runtime used to run Euro-Office when both docker and podman are installed.
 
 Testing against Microsoft Excel itself is not automated: it requires either a Windows machine with a licensed Office driving Excel through COM, or a Microsoft 365 account and the Graph API to have Excel's own import engine open the file server-side.
 

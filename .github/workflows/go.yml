@@ -81,3 +81,26 @@ jobs:
 
       - name: Test
         run: go test -v -run TestCompatGnumeric ./...
+
+  # Euro-Office converts a document to an OOXML-shaped internal model on
+  # import, the way Excel does, so it catches values that survive the import
+  # but lose the formatting they are displayed with.
+  euro-office:
+    name: cross-reader (euro-office)
+    runs-on: ubuntu-latest
+    env:
+      RECHENBRETT_REQUIRE_CROSS_READERS: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      # Pulled in its own step so that an image that has moved or cannot be
+      # fetched is reported as such, rather than as a test failure.
+      - name: Pull the Euro-Office document server
+        run: docker pull ghcr.io/euro-office/documentserver:latest
+
+      - name: Test
+        run: go test -v -run TestCompatEuroOffice ./...

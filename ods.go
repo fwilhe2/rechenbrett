@@ -250,6 +250,10 @@ func dataStyleNameFor(presetStyleName string) string {
 		return "FLOAT_DATA_STYLE"
 	case "DATE_STYLE":
 		return "DATE_DATA_STYLE"
+	case "TIME_STYLE":
+		return "TIME_DATA_STYLE"
+	case "PERCENTAGE_STYLE":
+		return "PERCENTAGE_DATA_STYLE"
 	case "EUR_STYLE":
 		return "EUR_DATA_STYLE"
 	case "USD_STYLE":
@@ -546,12 +550,10 @@ func createCell(data cellData) Cell {
 		cell.StyleName = "DATE_STYLE"
 		cell.DateValue, cell.err = dateString(data.Value)
 	case "time":
-		// No data style: LibreOffice formats time values with the locale's
-		// default time format.
+		cell.StyleName = "TIME_STYLE"
 		cell.TimeValue, cell.err = timeString(data.Value)
 	case "percentage":
-		// No data style: LibreOffice formats percentage values with the
-		// locale's default percentage format.
+		cell.StyleName = "PERCENTAGE_STYLE"
 		cell.err = parseNumber(data.Value, data.ValueType)
 		cell.Value = data.Value
 	case "formula":
@@ -619,6 +621,32 @@ func createNumberStyles() []any {
 				textElement{Content: "-"},
 				dateDay{Style: "long"},
 			},
+		},
+		// Time and percentage carry an explicit format for the same reason
+		// the other types do: a value without a data style is left to the
+		// consumer to format, and only LibreOffice fills the gap with the
+		// locale's default. Others pick something arbitrary — a time shown
+		// with a date format renders as a day in 1899 — or nothing at all.
+		// Neither style fixes the language, so the decimal and time
+		// separators still follow the locale; only the format does not.
+		timeStyle{
+			Name: "TIME_DATA_STYLE",
+			Parts: []any{
+				timeHours{Style: "long"},
+				textElement{Content: ":"},
+				timeMinutes{Style: "long"},
+				textElement{Content: ":"},
+				timeSeconds{Style: "long"},
+			},
+		},
+		percentageStyle{
+			Name: "PERCENTAGE_DATA_STYLE",
+			Number: numberElement{
+				DecimalPlaces:    "2",
+				MinDecimalPlaces: "2",
+				MinIntegerDigits: "1",
+			},
+			Text: textElement{Content: "%"},
 		},
 		makeCurrencyStyle("EUR", "de", "DE", "€"),
 		makeNegativeCurrencyStyle("EUR", "de", "DE", "€"),
@@ -727,6 +755,8 @@ func createStyles() []cellStyle {
 	return []cellStyle{
 		{Name: "FLOAT_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "FLOAT_DATA_STYLE"},
 		{Name: "DATE_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "DATE_DATA_STYLE"},
+		{Name: "TIME_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "TIME_DATA_STYLE"},
+		{Name: "PERCENTAGE_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "PERCENTAGE_DATA_STYLE"},
 		{Name: "EUR_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "EUR_DATA_STYLE"},
 		{Name: "USD_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "USD_DATA_STYLE"},
 		{Name: "GBP_STYLE", Family: "table-cell", ParentStyleName: "Default", DataStyleName: "GBP_DATA_STYLE"},
@@ -1044,6 +1074,36 @@ type dateStyle struct {
 	XMLName xml.Name `xml:"number:date-style"`
 	Name    string   `xml:"style:name,attr"`
 	Parts   []any    `xml:"number:text"`
+}
+
+type timeStyle struct {
+	XMLName xml.Name `xml:"number:time-style"`
+	Name    string   `xml:"style:name,attr"`
+	Parts   []any    `xml:"number:text"`
+}
+
+type timeHours struct {
+	XMLName xml.Name `xml:"number:hours"`
+	Style   string   `xml:"number:style,attr"`
+}
+
+type timeMinutes struct {
+	XMLName xml.Name `xml:"number:minutes"`
+	Style   string   `xml:"number:style,attr"`
+}
+
+type timeSeconds struct {
+	XMLName xml.Name `xml:"number:seconds"`
+	Style   string   `xml:"number:style,attr"`
+}
+
+// Field order matters: the ODF schema requires the number:number of a
+// percentage style to precede the number:text carrying the percent sign.
+type percentageStyle struct {
+	XMLName xml.Name      `xml:"number:percentage-style"`
+	Name    string        `xml:"style:name,attr"`
+	Number  numberElement `xml:"number:number"`
+	Text    textElement   `xml:"number:text"`
 }
 
 type dateYear struct {

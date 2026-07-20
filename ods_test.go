@@ -137,7 +137,9 @@ func TestCommonDataTypes(t *testing.T) {
 			"−42.33",
 			"2022-02-02",
 			"2022-02-02",
-			"07:03:00 PM",
+			// Time and percentage carry an explicit data style, so the
+			// format no longer follows the locale — only the separators do.
+			"19:03:00",
 			"2.22€",
 			"−2.22€",
 			"2.22$",
@@ -167,7 +169,7 @@ func TestCommonDataTypes(t *testing.T) {
 			"−2.22£",
 			"2.22€",
 			"−2.22€",
-			"42,23 %",
+			"42,23%",
 		},
 	}
 
