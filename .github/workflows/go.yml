@@ -43,6 +43,16 @@ jobs:
 
       - run: libreoffice --headless --version
 
+      # Gnumeric reads the generated documents as a second implementation of
+      # the format, independent of LibreOffice and stricter about it; see
+      # compat_test.go. The cross-reader test skips itself when ssconvert is
+      # missing, so a failure to install it must not fail the job silently.
+      - name: Install gnumeric
+        run: |
+          apt-get update
+          apt-get install --yes --no-install-recommends gnumeric
+          ssconvert --version
+
       - name: Build
         run: go build -v ./...
 

@@ -21,6 +21,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 // generator identifies this library in the document metadata (meta:generator).
@@ -31,6 +32,11 @@ const odfVersion = "1.4"
 
 // defaultTableName is the name of the single sheet created by MakeSpreadsheet.
 const defaultTableName = "Sheet1"
+
+// zipEntryTime is the modification time stamped on every entry of a written
+// package, so that the output is reproducible and the timestamp is
+// representable in the MS-DOS date fields of a zip archive.
+var zipEntryTime = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
 var (
 	germanDateFormat = regexp.MustCompile(`^(\d{1,2})\.(\d{1,2})\.(\d{4})$`)
@@ -174,7 +180,8 @@ func MakeSpreadsheetWithName(name string, cells [][]Cell) (Spreadsheet, error) {
 	return Spreadsheet{
 		Tables: []table{
 			{
-				Name: name,
+				Name:      name,
+				StyleName: tableStyleName,
 				// The ODF schema requires at least one table:table-column
 				// before the table rows.
 				Columns: []tableColumn{{NumberColumnsRepeated: strconv.Itoa(maxCols)}},
@@ -303,6 +310,7 @@ func toA1(row, col int) string {
 // MakeFlatOds serializes the spreadsheet as a flat OpenDocument XML document
 // (.fods).
 func MakeFlatOds(spreadsheet Spreadsheet) (string, error) {
+	pageStyles, master := createPageStyles()
 	fods := flatOds{
 		XMLNSOffice:    "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
 		XMLNSTable:     "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
@@ -311,13 +319,18 @@ func MakeFlatOds(spreadsheet Spreadsheet) (string, error) {
 		XMLNSFo:        "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:    "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
 		XMLNSMeta:      "urn:oasis:names:tc:opendocument:xmlns:meta:1.0",
+		XMLNSOf:        "urn:oasis:names:tc:opendocument:xmlns:of:1.2",
+		XMLNSSvg:       "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
 		OfficeVersion:  odfVersion,
 		OfficeMimetype: "application/vnd.oasis.opendocument.spreadsheet",
 		Meta:           officeMeta{Generator: generator},
+		Styles:         createCommonStyles(),
 		AutomaticStyles: automaticStyles{
 			NumberStyles: createNumberStyles(),
-			Styles:       append(createStyles(), spreadsheet.customStyles...),
+			Styles:       createAutomaticStyles(spreadsheet.customStyles),
+			PageLayout:   &pageStyles.PageLayout,
 		},
+		MasterStyles: master,
 		Body: documentBody{
 			Spreadsheet: spreadsheet,
 		},
@@ -373,29 +386,30 @@ func WriteOds(w io.Writer, spreadsheet Spreadsheet) error {
 		XMLNSStyle:    "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
 		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
+		XMLNSOf:       "urn:oasis:names:tc:opendocument:xmlns:of:1.2",
 		OfficeVersion: odfVersion,
 		AutomaticStyles: automaticStyles{
 			NumberStyles: createNumberStyles(),
-			Styles:       append(createStyles(), spreadsheet.customStyles...),
+			Styles:       createAutomaticStyles(spreadsheet.customStyles),
 		},
 		Body: documentBody{
 			Spreadsheet: spreadsheet,
 		},
 	}
 
+	pageStyles, master := createPageStyles()
 	stylesXml := documentStyles{
-		XMLNSOffice:   "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
-		XMLNSTable:    "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
-		XMLNSText:     "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
-		XMLNSStyle:    "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
-		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
-		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
-		XMLNSSvg:      "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
-		OfficeVersion: odfVersion,
-		AutomaticStyles: automaticStyles{
-			NumberStyles: createNumberStyles(),
-			Styles:       createStyles(),
-		},
+		XMLNSOffice:     "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
+		XMLNSTable:      "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
+		XMLNSText:       "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
+		XMLNSStyle:      "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
+		XMLNSFo:         "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
+		XMLNSNumber:     "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
+		XMLNSSvg:        "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
+		OfficeVersion:   odfVersion,
+		Styles:          createCommonStyles(),
+		AutomaticStyles: pageStyles,
+		MasterStyles:    master,
 	}
 
 	metaXml := documentMeta{
@@ -446,7 +460,16 @@ func WriteOds(w io.Writer, spreadsheet Spreadsheet) error {
 		if err != nil {
 			return fmt.Errorf("marshaling %s: %w", part.name, err)
 		}
-		writer, err := zipWriter.Create(part.name)
+		writer, err := zipWriter.CreateHeader(&zip.FileHeader{
+			Name:   part.name,
+			Method: zip.Deflate,
+			// Without an explicit timestamp the entries carry a zero time,
+			// which the MS-DOS date fields of a zip archive cannot express;
+			// they end up dated 1979-12-31, and strict readers reject that.
+			// The timestamp is fixed rather than time.Now() to keep the
+			// output byte-for-byte reproducible.
+			Modified: zipEntryTime,
+		})
 		if err != nil {
 			return fmt.Errorf("creating zip entry %s: %w", part.name, err)
 		}
@@ -532,7 +555,7 @@ func createCell(data cellData) Cell {
 		cell.err = parseNumber(data.Value, data.ValueType)
 		cell.Value = data.Value
 	case "formula":
-		cell.Formula = data.Value
+		cell.Formula = toOpenFormula(data.Value)
 		cell.ValueType = ""
 	case "currency", "currency-eur", "currency-usd", "currency-gbp":
 		// office:value-type only allows "currency"; the concrete currency is
@@ -629,10 +652,75 @@ func makeCurrencyStyle(code, language, country, symbol string) currencyStyle {
 func makeNegativeCurrencyStyle(code, language, country, symbol string) currencyStyle {
 	style := makeCurrencyStyle(code, language, country, symbol)
 	style.Name = code + "_DATA_STYLE"
+	// Only the style referenced through style:map is volatile. Leaving the
+	// flag on the style the cells refer to marks it as unused, and consumers
+	// are free to discard it along with the currency formatting.
+	style.Volatile = ""
 	style.TextProperties = &textProperties{Color: "#ff0000"}
 	style.Texts = []textElement{{"−"}}
 	style.StyleMap = &styleMap{Condition: "value()>=0", ApplyStyleName: code + "_DATA_STYLE_POSITIVE"}
 	return style
+}
+
+// Names of the common styles and of the page setup shared by all sheets.
+const (
+	defaultCellStyleName = "Default"
+	pageLayoutName       = "PAGE_LAYOUT"
+	masterPageName       = "Default"
+	tableStyleName       = "TABLE_STYLE"
+)
+
+// createCommonStyles returns the office:styles content: the default cell
+// style all generated styles inherit from. Cell styles referring to a
+// "Default" parent that is defined nowhere are silently dropped by some
+// consumers, taking the number formats attached to them with it.
+func createCommonStyles() officeStyles {
+	return officeStyles{
+		DefaultStyle: defaultCell{Family: "table-cell"},
+		Styles: []cellStyle{
+			{Name: defaultCellStyleName, Family: "table-cell"},
+		},
+	}
+}
+
+// createPageStyles returns the A4 portrait page layout and the master page
+// referring to it.
+func createPageStyles() (pageAutomaticStyle, masterStyles) {
+	layout := pageAutomaticStyle{
+		PageLayout: pageLayout{
+			Name: pageLayoutName,
+			Properties: pageLayoutProperties{
+				PageWidth:        "21.0cm",
+				PageHeight:       "29.7cm",
+				PrintOrientation: "portrait",
+				MarginTop:        "2cm",
+				MarginBottom:     "2cm",
+				MarginLeft:       "2cm",
+				MarginRight:      "2cm",
+			},
+		},
+	}
+	master := masterStyles{
+		MasterPage: masterPage{Name: masterPageName, PageLayoutName: pageLayoutName},
+	}
+	return layout, master
+}
+
+// createAutomaticStyles returns the automatic style:style definitions of a
+// document: the preset cell styles, the styles generated for cells created
+// with [MakeStyledCell], and the table style binding every sheet to the
+// master page.
+func createAutomaticStyles(customStyles []cellStyle) []any {
+	var styles []any
+	for _, style := range append(createStyles(), customStyles...) {
+		styles = append(styles, style)
+	}
+	return append(styles, tableStyle{
+		Name:           tableStyleName,
+		Family:         "table",
+		MasterPageName: masterPageName,
+		Properties:     tableProperties{Display: "true"},
+	})
 }
 
 func createStyles() []cellStyle {
@@ -701,12 +789,16 @@ type tableColumn struct {
 }
 
 type table struct {
-	XMLName xml.Name      `xml:"table:table"`
-	Name    string        `xml:"table:name,attr"`
-	Columns []tableColumn `xml:"table:table-column"`
-	Rows    []row         `xml:"table:table-row"`
+	XMLName   xml.Name      `xml:"table:table"`
+	Name      string        `xml:"table:name,attr"`
+	StyleName string        `xml:"table:style-name,attr,omitempty"`
+	Columns   []tableColumn `xml:"table:table-column"`
+	Rows      []row         `xml:"table:table-row"`
 }
 
+// Field order matters throughout the document types: the ODF schema
+// prescribes the order of the top-level elements, with office:styles before
+// office:automatic-styles before office:master-styles.
 type flatOds struct {
 	XMLName         xml.Name        `xml:"office:document"`
 	XMLNSOffice     string          `xml:"xmlns:office,attr"`
@@ -716,10 +808,14 @@ type flatOds struct {
 	XMLNSFo         string          `xml:"xmlns:fo,attr"`
 	XMLNSNumber     string          `xml:"xmlns:number,attr"`
 	XMLNSMeta       string          `xml:"xmlns:meta,attr"`
+	XMLNSOf         string          `xml:"xmlns:of,attr"`
+	XMLNSSvg        string          `xml:"xmlns:svg,attr"`
 	OfficeVersion   string          `xml:"office:version,attr"`
 	OfficeMimetype  string          `xml:"office:mimetype,attr"`
 	Meta            officeMeta      `xml:"office:meta"`
+	Styles          officeStyles    `xml:"office:styles"`
 	AutomaticStyles automaticStyles `xml:"office:automatic-styles"`
+	MasterStyles    masterStyles    `xml:"office:master-styles"`
 	Body            documentBody    `xml:"office:body"`
 }
 
@@ -731,6 +827,7 @@ type documentContent struct {
 	XMLNSStyle      string          `xml:"xmlns:style,attr"`
 	XMLNSFo         string          `xml:"xmlns:fo,attr"`
 	XMLNSNumber     string          `xml:"xmlns:number,attr"`
+	XMLNSOf         string          `xml:"xmlns:of,attr"`
 	OfficeVersion   string          `xml:"office:version,attr"`
 	AutomaticStyles automaticStyles `xml:"office:automatic-styles"`
 	Body            documentBody    `xml:"office:body"`
@@ -750,22 +847,96 @@ type officeMeta struct {
 }
 
 type documentStyles struct {
-	XMLName         xml.Name        `xml:"office:document-styles"`
-	XMLNSOffice     string          `xml:"xmlns:office,attr"`
-	XMLNSTable      string          `xml:"xmlns:table,attr"`
-	XMLNSText       string          `xml:"xmlns:text,attr"`
-	XMLNSStyle      string          `xml:"xmlns:style,attr"`
-	XMLNSFo         string          `xml:"xmlns:fo,attr"`
-	XMLNSNumber     string          `xml:"xmlns:number,attr"`
-	XMLNSSvg        string          `xml:"xmlns:svg,attr"`
-	OfficeVersion   string          `xml:"office:version,attr"`
-	AutomaticStyles automaticStyles `xml:"office:automatic-styles"`
+	XMLName         xml.Name           `xml:"office:document-styles"`
+	XMLNSOffice     string             `xml:"xmlns:office,attr"`
+	XMLNSTable      string             `xml:"xmlns:table,attr"`
+	XMLNSText       string             `xml:"xmlns:text,attr"`
+	XMLNSStyle      string             `xml:"xmlns:style,attr"`
+	XMLNSFo         string             `xml:"xmlns:fo,attr"`
+	XMLNSNumber     string             `xml:"xmlns:number,attr"`
+	XMLNSSvg        string             `xml:"xmlns:svg,attr"`
+	OfficeVersion   string             `xml:"office:version,attr"`
+	Styles          officeStyles       `xml:"office:styles"`
+	AutomaticStyles pageAutomaticStyle `xml:"office:automatic-styles"`
+	MasterStyles    masterStyles       `xml:"office:master-styles"`
 }
 
 type automaticStyles struct {
-	XMLName      xml.Name    `xml:"office:automatic-styles"`
-	NumberStyles []any       `xml:"number:number-style"`
+	XMLName      xml.Name `xml:"office:automatic-styles"`
+	NumberStyles []any    `xml:"number:number-style"`
+	// Styles holds the generated cell styles and the table style, which the
+	// ODF schema both spells style:style.
+	Styles []any `xml:"style:style"`
+
+	// PageLayout is set only for flat documents, which have a single
+	// office:automatic-styles for what the package splits over content.xml
+	// and styles.xml.
+	PageLayout *pageLayout `xml:"style:page-layout,omitempty"`
+}
+
+// officeStyles holds the common styles of a document. Every cell style this
+// package generates inherits from the "Default" cell style defined here;
+// consumers other than LibreOffice do not invent it when it is missing.
+type officeStyles struct {
+	XMLName      xml.Name    `xml:"office:styles"`
+	DefaultStyle defaultCell `xml:"style:default-style"`
 	Styles       []cellStyle `xml:"style:style"`
+}
+
+type defaultCell struct {
+	XMLName xml.Name `xml:"style:default-style"`
+	Family  string   `xml:"style:family,attr"`
+}
+
+// pageAutomaticStyle carries the page layout referenced by the master page.
+type pageAutomaticStyle struct {
+	XMLName    xml.Name   `xml:"office:automatic-styles"`
+	PageLayout pageLayout `xml:"style:page-layout"`
+}
+
+type pageLayout struct {
+	XMLName    xml.Name             `xml:"style:page-layout"`
+	Name       string               `xml:"style:name,attr"`
+	Properties pageLayoutProperties `xml:"style:page-layout-properties"`
+}
+
+type pageLayoutProperties struct {
+	XMLName          xml.Name `xml:"style:page-layout-properties"`
+	PageWidth        string   `xml:"fo:page-width,attr"`
+	PageHeight       string   `xml:"fo:page-height,attr"`
+	PrintOrientation string   `xml:"style:print-orientation,attr"`
+	MarginTop        string   `xml:"fo:margin-top,attr"`
+	MarginBottom     string   `xml:"fo:margin-bottom,attr"`
+	MarginLeft       string   `xml:"fo:margin-left,attr"`
+	MarginRight      string   `xml:"fo:margin-right,attr"`
+}
+
+// masterStyles holds the master page every sheet refers to through its table
+// style. Spreadsheet applications take the page setup used for printing from
+// it, and Excel expects one to be present.
+type masterStyles struct {
+	XMLName    xml.Name   `xml:"office:master-styles"`
+	MasterPage masterPage `xml:"style:master-page"`
+}
+
+type masterPage struct {
+	XMLName        xml.Name `xml:"style:master-page"`
+	Name           string   `xml:"style:name,attr"`
+	PageLayoutName string   `xml:"style:page-layout-name,attr"`
+}
+
+// tableStyle is the automatic style of a sheet, binding it to the master page.
+type tableStyle struct {
+	XMLName        xml.Name        `xml:"style:style"`
+	Name           string          `xml:"style:name,attr"`
+	Family         string          `xml:"style:family,attr"`
+	MasterPageName string          `xml:"style:master-page-name,attr"`
+	Properties     tableProperties `xml:"style:table-properties"`
+}
+
+type tableProperties struct {
+	XMLName xml.Name `xml:"style:table-properties"`
+	Display string   `xml:"table:display,attr"`
 }
 
 // Field order matters: the ODF schema requires style:text-properties to be
@@ -806,7 +977,7 @@ type cellStyle struct {
 	XMLName             xml.Name             `xml:"style:style"`
 	Name                string               `xml:"style:name,attr"`
 	Family              string               `xml:"style:family,attr"`
-	ParentStyleName     string               `xml:"style:parent-style-name,attr"`
+	ParentStyleName     string               `xml:"style:parent-style-name,attr,omitempty"`
 	DataStyleName       string               `xml:"style:data-style-name,attr,omitempty"`
 	TableCellProperties *tableCellProperties `xml:"style:table-cell-properties,omitempty"`
 	TextProperties      *textProperties      `xml:"style:text-properties,omitempty"`
