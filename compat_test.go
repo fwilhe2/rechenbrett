@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -202,6 +203,24 @@ func TestCompatZipTimestampsAreValid(t *testing.T) {
 	}
 }
 
+// crossReadersRequired reports whether a missing cross-reader is a failure
+// rather than a reason to skip. The dedicated CI jobs set it, so that a
+// cross-reader that is not installed, or an image that cannot be pulled,
+// fails visibly instead of quietly testing nothing.
+func crossReadersRequired() bool {
+	return os.Getenv("RECHENBRETT_REQUIRE_CROSS_READERS") != ""
+}
+
+// missingCrossReader skips the calling test, or fails it when the
+// cross-readers are required.
+func missingCrossReader(t *testing.T, format string, args ...any) {
+	t.Helper()
+	if crossReadersRequired() {
+		t.Fatalf(format, args...)
+	}
+	t.Skipf(format, args...)
+}
+
 // TestCompatGnumericReadsDocument has Gnumeric convert a generated document
 // to CSV and compares the result with what the document should contain.
 //
@@ -212,7 +231,7 @@ func TestCompatZipTimestampsAreValid(t *testing.T) {
 func TestCompatGnumericReadsDocument(t *testing.T) {
 	ssconvert, err := exec.LookPath("ssconvert")
 	if err != nil {
-		t.Skip("ssconvert (gnumeric) is not installed, skipping cross-reader test")
+		missingCrossReader(t, "ssconvert (gnumeric) is not installed")
 	}
 
 	cells := [][]Cell{
@@ -265,6 +284,124 @@ func TestCompatGnumericReadsDocument(t *testing.T) {
 	for i, want := range expected {
 		if record[i] != want {
 			t.Errorf("cell %d: gnumeric read %q, expected %q", i+1, record[i], want)
+		}
+	}
+}
+
+// Euro-Office is a fork of ONLYOFFICE; its converter, x2t, is what the tests
+// below drive. See TestCompatEuroOfficeRendersValues for why it is worth
+// testing against.
+const (
+	euroOfficeImage = "ghcr.io/euro-office/documentserver:latest"
+	// x2t identifies target formats numerically; 260 is CSV.
+	x2tFormatCsv = 260
+)
+
+// runX2t is the command run inside the container. The converter is looked up
+// rather than named by path: the project is young and has already moved it
+// once, from /var/www/onlyoffice to /var/www/euro-office, and the two paths
+// are both in circulation under the latest tag.
+const runX2t = `set -e
+x2t=$(find /var/www -type f -name x2t | head -1)
+test -n "$x2t" || { echo "no x2t in the image"; exit 1; }
+LD_LIBRARY_PATH=$(dirname "$x2t") "$x2t" /work/params.xml`
+
+// containerRuntime returns the name of an available container runtime.
+// RECHENBRETT_CONTAINER_RUNTIME overrides the search, which is useful when
+// both are installed and only one holds a usable image.
+func containerRuntime() (string, bool) {
+	candidates := []string{"docker", "podman"}
+	if override := os.Getenv("RECHENBRETT_CONTAINER_RUNTIME"); override != "" {
+		candidates = []string{override}
+	}
+	for _, runtime := range candidates {
+		if path, err := exec.LookPath(runtime); err == nil {
+			return path, true
+		}
+	}
+	return "", false
+}
+
+// TestCompatEuroOfficeRendersValues has Euro-Office convert a generated
+// document to CSV and compares what it renders with what the cells hold.
+//
+// Euro-Office (a fork of ONLYOFFICE) converts a document to its OOXML-shaped
+// internal model on import, which is what Excel does as well. That makes it
+// the closest available stand-in for how Excel will *display* a document,
+// as opposed to whether it can parse it: a value that survives the import
+// but loses its number format renders as something else entirely, and this
+// is where that shows up.
+//
+// It is more forgiving than Gnumeric about the format itself, so it
+// complements rather than replaces the Gnumeric test.
+func TestCompatEuroOfficeRendersValues(t *testing.T) {
+	runtime, ok := containerRuntime()
+	if !ok {
+		missingCrossReader(t, "neither docker nor podman is available")
+	}
+
+	cells := [][]Cell{
+		{
+			MakeCell("ABBA", "string"),
+			MakeCell("42.3324", "float"),
+			MakeCell("2022-02-02", "date"),
+			MakeCell("19:03:00", "time"),
+			MakeCell("0.4223", "percentage"),
+			MakeCell("2.22", "currency"),
+		},
+	}
+	// A time rendered as a date, or a percentage as a bare fraction, is what
+	// a missing number format looks like on the other side of the import.
+	expected := []string{"ABBA", "42.33", "2022-02-02", "19:03:00", "42.23%", "2.22[$€]"}
+
+	spreadsheet, err := MakeSpreadsheet(cells)
+	if err != nil {
+		t.Fatalf("MakeSpreadsheet: %v", err)
+	}
+	buff, err := MakeOds(spreadsheet)
+	if err != nil {
+		t.Fatalf("MakeOds: %v", err)
+	}
+
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "in.ods"), buff.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// x2t is driven by a parameter file naming the conversion; the paths in
+	// it are the ones inside the container.
+	params := `<?xml version="1.0" encoding="utf-8"?>
+<TaskQueueDataConvert xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<m_sFileFrom>/work/in.ods</m_sFileFrom>
+<m_sFileTo>/work/out.csv</m_sFileTo>
+<m_nFormatTo>` + strconv.Itoa(x2tFormatCsv) + `</m_nFormatTo>
+<m_sFontDir>/usr/share/fonts</m_sFontDir>
+</TaskQueueDataConvert>`
+	if err := os.WriteFile(filepath.Join(dir, "params.xml"), []byte(params), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	convert := exec.Command(runtime, "run", "--rm",
+		"-v", dir+":/work", "--entrypoint", "/bin/sh", euroOfficeImage, "-c", runX2t)
+	if output, err := convert.CombinedOutput(); err != nil {
+		missingCrossReader(t, "euro-office conversion failed (is the image pulled?): %v\n%s", err, output)
+	}
+
+	converted, err := os.ReadFile(filepath.Join(dir, "out.csv"))
+	if err != nil {
+		t.Fatalf("euro-office produced no output: %v", err)
+	}
+	// x2t writes a byte order mark ahead of the first field.
+	record, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(string(converted), "\ufeff"))).Read()
+	if err != nil {
+		t.Fatalf("reading the converted csv: %v", err)
+	}
+
+	if len(record) != len(expected) {
+		t.Fatalf("euro-office read %d cells, expected %d: %q", len(record), len(expected), record)
+	}
+	for i, want := range expected {
+		if record[i] != want {
+			t.Errorf("cell %d: euro-office rendered %q, expected %q", i+1, record[i], want)
 		}
 	}
 }

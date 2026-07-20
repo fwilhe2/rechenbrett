@@ -43,16 +43,6 @@ jobs:
 
       - run: libreoffice --headless --version
 
-      # Gnumeric reads the generated documents as a second implementation of
-      # the format, independent of LibreOffice and stricter about it; see
-      # compat_test.go. The cross-reader test skips itself when ssconvert is
-      # missing, so a failure to install it must not fail the job silently.
-      - name: Install gnumeric
-        run: |
-          apt-get update
-          apt-get install --yes --no-install-recommends gnumeric
-          ssconvert --version
-
       - name: Build
         run: go build -v ./...
 
@@ -60,3 +50,57 @@ jobs:
         run: go test -v ./...
 
       - uses: fwilhe2/odfvalidator-action@main
+
+  # The cross-reader jobs check the generated documents against
+  # implementations of the format other than LibreOffice, which accepts a
+  # good deal the format does not allow and repairs the rest silently. They
+  # run separately from the build job so that it is visible which reader
+  # rejected a document, and they set RECHENBRETT_REQUIRE_CROSS_READERS so
+  # that a reader that could not be installed fails the job instead of
+  # quietly skipping the test.
+
+  # Gnumeric is independent of LibreOffice and considerably stricter about
+  # the format: it catches documents that do not conform.
+  gnumeric:
+    name: cross-reader (gnumeric)
+    runs-on: ubuntu-latest
+    env:
+      RECHENBRETT_REQUIRE_CROSS_READERS: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Install gnumeric
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends gnumeric
+          ssconvert --version
+
+      - name: Test
+        run: go test -v -run TestCompatGnumeric ./...
+
+  # Euro-Office converts a document to an OOXML-shaped internal model on
+  # import, the way Excel does, so it catches values that survive the import
+  # but lose the formatting they are displayed with.
+  euro-office:
+    name: cross-reader (euro-office)
+    runs-on: ubuntu-latest
+    env:
+      RECHENBRETT_REQUIRE_CROSS_READERS: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      # Pulled in its own step so that an image that has moved or cannot be
+      # fetched is reported as such, rather than as a test failure.
+      - name: Pull the Euro-Office document server
+        run: docker pull ghcr.io/euro-office/documentserver:latest
+
+      - name: Test
+        run: go test -v -run TestCompatEuroOffice ./...
