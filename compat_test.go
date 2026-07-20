@@ -182,6 +182,26 @@ func TestCompatCurrencyStyleIsNotVolatile(t *testing.T) {
 	}
 }
 
+// TestCompatZipTimestampsAreValid checks that no entry of the package
+// predates 1980. Earlier dates cannot be expressed in the MS-DOS date fields
+// of a zip archive, and strict readers reject an archive carrying them.
+func TestCompatZipTimestampsAreValid(t *testing.T) {
+	buff, err := MakeOds(compatSpreadsheet(t))
+	if err != nil {
+		t.Fatalf("MakeOds: %v", err)
+	}
+	reader, err := zip.NewReader(bytes.NewReader(buff.Bytes()), int64(buff.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, f := range reader.File {
+		if f.Modified.Year() < 1980 {
+			t.Errorf("zip entry %s is dated %s, which a zip archive cannot express", f.Name, f.Modified)
+		}
+	}
+}
+
 // crossReadersRequired reports whether a missing cross-reader is a failure
 // rather than a reason to skip. The dedicated CI jobs set it, so that a
 // cross-reader that is not installed, or an image that cannot be pulled,

@@ -21,6 +21,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 // generator identifies this library in the document metadata (meta:generator).
@@ -31,6 +32,11 @@ const odfVersion = "1.4"
 
 // defaultTableName is the name of the single sheet created by MakeSpreadsheet.
 const defaultTableName = "Sheet1"
+
+// zipEntryTime is the modification time stamped on every entry of a written
+// package, so that the output is reproducible and the timestamp is
+// representable in the MS-DOS date fields of a zip archive.
+var zipEntryTime = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
 var (
 	germanDateFormat = regexp.MustCompile(`^(\d{1,2})\.(\d{1,2})\.(\d{4})$`)
@@ -454,7 +460,16 @@ func WriteOds(w io.Writer, spreadsheet Spreadsheet) error {
 		if err != nil {
 			return fmt.Errorf("marshaling %s: %w", part.name, err)
 		}
-		writer, err := zipWriter.Create(part.name)
+		writer, err := zipWriter.CreateHeader(&zip.FileHeader{
+			Name:   part.name,
+			Method: zip.Deflate,
+			// Without an explicit timestamp the entries carry a zero time,
+			// which the MS-DOS date fields of a zip archive cannot express;
+			// they end up dated 1979-12-31, and strict readers reject that.
+			// The timestamp is fixed rather than time.Now() to keep the
+			// output byte-for-byte reproducible.
+			Modified: zipEntryTime,
+		})
 		if err != nil {
 			return fmt.Errorf("creating zip entry %s: %w", part.name, err)
 		}
