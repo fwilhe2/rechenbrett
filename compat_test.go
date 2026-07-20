@@ -163,6 +163,25 @@ func TestCompatFormulasAreNamespaced(t *testing.T) {
 	}
 }
 
+// TestCompatCurrencyStyleIsNotVolatile checks that the currency styles cells
+// refer to are not marked volatile. A volatile style is one a consumer may
+// discard, which would take the currency formatting with it. Only the styles
+// reached through style:map are volatile.
+func TestCompatCurrencyStyleIsNotVolatile(t *testing.T) {
+	content := readOdsParts(t, compatSpreadsheet(t))["content.xml"]
+
+	for _, code := range []string{"EUR", "USD", "GBP"} {
+		definition := regexp.MustCompile(`<number:currency-style style:name="` + code + `_DATA_STYLE"([^>]*)>`)
+		match := definition.FindStringSubmatch(content)
+		if match == nil {
+			t.Fatalf("%s_DATA_STYLE is not defined", code)
+		}
+		if strings.Contains(match[1], "style:volatile") {
+			t.Errorf("%s_DATA_STYLE is marked volatile, but cells refer to it", code)
+		}
+	}
+}
+
 // crossReadersRequired reports whether a missing cross-reader is a failure
 // rather than a reason to skip. The dedicated CI jobs set it, so that a
 // cross-reader that is not installed, or an image that cannot be pulled,

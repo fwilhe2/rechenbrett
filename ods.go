@@ -637,6 +637,10 @@ func makeCurrencyStyle(code, language, country, symbol string) currencyStyle {
 func makeNegativeCurrencyStyle(code, language, country, symbol string) currencyStyle {
 	style := makeCurrencyStyle(code, language, country, symbol)
 	style.Name = code + "_DATA_STYLE"
+	// Only the style referenced through style:map is volatile. Leaving the
+	// flag on the style the cells refer to marks it as unused, and consumers
+	// are free to discard it along with the currency formatting.
+	style.Volatile = ""
 	style.TextProperties = &textProperties{Color: "#ff0000"}
 	style.Texts = []textElement{{"−"}}
 	style.StyleMap = &styleMap{Condition: "value()>=0", ApplyStyleName: code + "_DATA_STYLE_POSITIVE"}
