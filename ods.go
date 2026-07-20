@@ -311,6 +311,7 @@ func MakeFlatOds(spreadsheet Spreadsheet) (string, error) {
 		XMLNSFo:        "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:    "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
 		XMLNSMeta:      "urn:oasis:names:tc:opendocument:xmlns:meta:1.0",
+		XMLNSOf:        "urn:oasis:names:tc:opendocument:xmlns:of:1.2",
 		OfficeVersion:  odfVersion,
 		OfficeMimetype: "application/vnd.oasis.opendocument.spreadsheet",
 		Meta:           officeMeta{Generator: generator},
@@ -373,6 +374,7 @@ func WriteOds(w io.Writer, spreadsheet Spreadsheet) error {
 		XMLNSStyle:    "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
 		XMLNSFo:       "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
 		XMLNSNumber:   "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0",
+		XMLNSOf:       "urn:oasis:names:tc:opendocument:xmlns:of:1.2",
 		OfficeVersion: odfVersion,
 		AutomaticStyles: automaticStyles{
 			NumberStyles: createNumberStyles(),
@@ -532,7 +534,7 @@ func createCell(data cellData) Cell {
 		cell.err = parseNumber(data.Value, data.ValueType)
 		cell.Value = data.Value
 	case "formula":
-		cell.Formula = data.Value
+		cell.Formula = toOpenFormula(data.Value)
 		cell.ValueType = ""
 	case "currency", "currency-eur", "currency-usd", "currency-gbp":
 		// office:value-type only allows "currency"; the concrete currency is
@@ -716,6 +718,7 @@ type flatOds struct {
 	XMLNSFo         string          `xml:"xmlns:fo,attr"`
 	XMLNSNumber     string          `xml:"xmlns:number,attr"`
 	XMLNSMeta       string          `xml:"xmlns:meta,attr"`
+	XMLNSOf         string          `xml:"xmlns:of,attr"`
 	OfficeVersion   string          `xml:"office:version,attr"`
 	OfficeMimetype  string          `xml:"office:mimetype,attr"`
 	Meta            officeMeta      `xml:"office:meta"`
@@ -731,6 +734,7 @@ type documentContent struct {
 	XMLNSStyle      string          `xml:"xmlns:style,attr"`
 	XMLNSFo         string          `xml:"xmlns:fo,attr"`
 	XMLNSNumber     string          `xml:"xmlns:number,attr"`
+	XMLNSOf         string          `xml:"xmlns:of,attr"`
 	OfficeVersion   string          `xml:"office:version,attr"`
 	AutomaticStyles automaticStyles `xml:"office:automatic-styles"`
 	Body            documentBody    `xml:"office:body"`

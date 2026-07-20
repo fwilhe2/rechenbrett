@@ -50,3 +50,34 @@ jobs:
         run: go test -v ./...
 
       - uses: fwilhe2/odfvalidator-action@main
+
+  # The cross-reader jobs check the generated documents against
+  # implementations of the format other than LibreOffice, which accepts a
+  # good deal the format does not allow and repairs the rest silently. They
+  # run separately from the build job so that it is visible which reader
+  # rejected a document, and they set RECHENBRETT_REQUIRE_CROSS_READERS so
+  # that a reader that could not be installed fails the job instead of
+  # quietly skipping the test.
+
+  # Gnumeric is independent of LibreOffice and considerably stricter about
+  # the format: it catches documents that do not conform.
+  gnumeric:
+    name: cross-reader (gnumeric)
+    runs-on: ubuntu-latest
+    env:
+      RECHENBRETT_REQUIRE_CROSS_READERS: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Install gnumeric
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends gnumeric
+          ssconvert --version
+
+      - name: Test
+        run: go test -v -run TestCompatGnumeric ./...
