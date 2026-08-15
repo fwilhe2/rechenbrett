@@ -528,26 +528,12 @@ type customStyleKey struct {
 // dataStyleNameFor maps a preset style name assigned by createCell (e.g.
 // FLOAT_STYLE) to the number-format style it references, so custom styles
 // keep the same numeric formatting. Value types without a preset style
-// (string, time, percentage, formula) return "".
+// (string, formula) return "".
 func dataStyleNameFor(presetStyleName string) string {
-	switch presetStyleName {
-	case "FLOAT_STYLE":
-		return "FLOAT_DATA_STYLE"
-	case "DATE_STYLE":
-		return "DATE_DATA_STYLE"
-	case "TIME_STYLE":
-		return "TIME_DATA_STYLE"
-	case "PERCENTAGE_STYLE":
-		return "PERCENTAGE_DATA_STYLE"
-	case "EUR_STYLE":
-		return "EUR_DATA_STYLE"
-	case "USD_STYLE":
-		return "USD_DATA_STYLE"
-	case "GBP_STYLE":
-		return "GBP_DATA_STYLE"
-	default:
+	if presetStyleName == "" {
 		return ""
 	}
+	return strings.Replace(presetStyleName, "_STYLE", "_DATA_STYLE", 1)
 }
 
 func buildCustomCellStyle(name, dataStyleName string, style CellStyle) cellStyle {

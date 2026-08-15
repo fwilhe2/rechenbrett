@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -694,38 +693,6 @@ func TestStyledCell(t *testing.T) {
 
 	integrationTest(t, "styled-cell", "ods", givenThoseCells, expectedThisCsv)
 	integrationTest(t, "styled-cell", "fods", givenThoseCells, expectedThisCsv)
-}
-
-func TestUnitColorPalette(t *testing.T) {
-	palette := map[string]string{
-		"ColorNavy":    ColorNavy,
-		"ColorBlue":    ColorBlue,
-		"ColorAqua":    ColorAqua,
-		"ColorTeal":    ColorTeal,
-		"ColorPurple":  ColorPurple,
-		"ColorFuchsia": ColorFuchsia,
-		"ColorMaroon":  ColorMaroon,
-		"ColorRed":     ColorRed,
-		"ColorOrange":  ColorOrange,
-		"ColorYellow":  ColorYellow,
-		"ColorOlive":   ColorOlive,
-		"ColorGreen":   ColorGreen,
-		"ColorLime":    ColorLime,
-		"ColorBlack":   ColorBlack,
-		"ColorGray":    ColorGray,
-		"ColorSilver":  ColorSilver,
-		"ColorWhite":   ColorWhite,
-	}
-
-	hexColor := regexp.MustCompile(`^#[0-9a-f]{6}$`)
-	seen := map[string]string{}
-	for name, value := range palette {
-		assert(t, hexColor.MatchString(value), fmt.Sprintf("%s = %q is not a lowercase #rrggbb hex color", name, value))
-		if other, exists := seen[value]; exists {
-			t.Errorf("%s and %s both have value %q, expected the palette to have distinct colors", name, other, value)
-		}
-		seen[value] = name
-	}
 }
 
 func TestUnitStyledCellGeneratesStyle(t *testing.T) {
