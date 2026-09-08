@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 Florian Wilhelm
+#
+# SPDX-License-Identifier: MIT
+
+name: Grind validation
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GRIND_IMAGE: ghcr.io/fwilhe2/grind:latest
+
+jobs:
+  spreadsheets:
+    name: Validate spreadsheets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - name: Put grind on PATH
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          cat > "$RUNNER_TEMP/bin/grind" <<'WRAPPER'
+          #!/bin/sh
+          exec docker run --rm -i \
+            -u "$(id -u):$(id -g)" \
+            -v "$PWD:/work" -w /work \
+            "$GRIND_IMAGE" /grind "$@"
+          WRAPPER
+          chmod +x "$RUNNER_TEMP/bin/grind"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Pull grind
+        run: docker pull "$GRIND_IMAGE"
+
+      - name: Generate spreadsheets
+        run: go run ./cmd/showcase
+
+      - name: Validate spreadsheets
+        run: |
+          find output -type f \( -name '*.ods' -o -name '*.fods' \) -print0 \
+            | xargs -0 -r -n1 grind lint
